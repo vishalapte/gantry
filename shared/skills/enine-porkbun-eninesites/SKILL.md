@@ -14,9 +14,9 @@ description: >
 
 One script does the work. Run it; do not edit the records by hand in Porkbun's dashboard.
 
-    python3 ~/.claude/skills/enine-porkbun-eninesites/configure_eninesites.py example.com            # dry run
-    python3 ~/.claude/skills/enine-porkbun-eninesites/configure_eninesites.py example.com --apply    # apply + verify
-    python3 ~/.claude/skills/enine-porkbun-eninesites/configure_eninesites.py example.com --to host.example.net --apply
+    python3.14 ~/.claude/skills/enine-porkbun-eninesites/configure_eninesites.py example.com            # dry run
+    python3.14 ~/.claude/skills/enine-porkbun-eninesites/configure_eninesites.py example.com --apply    # apply + verify
+    python3.14 ~/.claude/skills/enine-porkbun-eninesites/configure_eninesites.py example.com --to host.example.net --apply
 
 The default is a dry run: it reads the zone, prints the plan and writes nothing. Only
 `--apply` changes a record. `--to` names the host to point at; it defaults to

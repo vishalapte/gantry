@@ -16,9 +16,9 @@ description: >
 One script does the work, from this machine, over `ssh <host> sudo -n bash -s`. Run it; do
 not type `useradd` on the host by hand.
 
-    python3 ~/.claude/skills/linux-create-user/create_user.py                       # help
-    python3 ~/.claude/skills/linux-create-user/create_user.py [login@]host name [options]          # dry run
-    python3 ~/.claude/skills/linux-create-user/create_user.py [login@]host name [options] --apply  # apply + verify
+    python3.14 ~/.claude/skills/linux-create-user/create_user.py                       # help
+    python3.14 ~/.claude/skills/linux-create-user/create_user.py [login@]host name [options]          # dry run
+    python3.14 ~/.claude/skills/linux-create-user/create_user.py [login@]host name [options] --apply  # apply + verify
 
 The uid decides the kind of account, as the host's own history did:
 

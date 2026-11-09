@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """Create a user on a remote Linux host over SSH, the way the host's history made them.
 
 Usage

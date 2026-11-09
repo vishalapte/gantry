@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """Point a Porkbun domain and its www at a host with ALIAS records (eninesites.com by default).
 
     configure_eninesites.py example.com                       # dry run: plan, preflight; writes nothing

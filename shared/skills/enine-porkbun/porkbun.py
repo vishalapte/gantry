@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """Create, update or delete one DNS record at Porkbun, list the account's domains, show a
 domain's records, capture the records a domain publishes elsewhere into Porkbun's zone, list
 or restore Porkbun's restore points, or run Porkbun's preflight for a change.

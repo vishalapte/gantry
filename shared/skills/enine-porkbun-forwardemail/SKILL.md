@@ -16,8 +16,8 @@ description: >
 
 One script does the work. Run it; do not create records by hand in either dashboard.
 
-    python3 ~/.claude/skills/enine-porkbun-forwardemail/fe_porkbun.py example.com           # dry run
-    python3 ~/.claude/skills/enine-porkbun-forwardemail/fe_porkbun.py example.com --apply   # apply + verify
+    python3.14 ~/.claude/skills/enine-porkbun-forwardemail/fe_porkbun.py example.com           # dry run
+    python3.14 ~/.claude/skills/enine-porkbun-forwardemail/fe_porkbun.py example.com --apply   # apply + verify
 
 The default is a dry run: it reads both services, prints the plan and writes nothing. Only
 `--apply` creates the domain on Forward Email or changes a DNS record.

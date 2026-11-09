@@ -226,7 +226,7 @@ class DraftVerb(SendCase):
         code, out, err = self.run_cli("draft", *self.message_argv())
         self.assertEqual((code, err), (0, ""))
         self.assertIn("draft 1 (draft)", out)
-        self.assertIn("send it with: python3 ~/.claude/skills/enine-mail/mail.py send 1 --apply", out)
+        self.assertIn("send it with: python3.14 ~/.claude/skills/enine-mail/mail.py send 1 --apply", out)
         code, out, _ = self.run_cli("draft", "1")
         self.assertEqual(code, 0)
         self.assertIn("bcc:  owner@example.org", out)

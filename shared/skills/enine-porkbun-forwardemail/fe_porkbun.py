@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """Add a domain to Forward Email and hold its Porkbun DNS to the records Forward Email asks for.
 
 The records come from the `zone_file` field of Forward Email's domain object, never from a

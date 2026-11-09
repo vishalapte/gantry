@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """Install this checkout of gantry into Claude Code, Codex and Pi.
 
     ./install --agent NAME [--dry-run]

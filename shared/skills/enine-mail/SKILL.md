@@ -14,7 +14,7 @@ description: >
 
 # Mail
 
-One script does the work: `python3 ~/.claude/skills/enine-mail/mail.py`. Run it; do not read,
+One script does the work: `python3.14 ~/.claude/skills/enine-mail/mail.py`. Run it; do not read,
 move or delete files in the mail store, the drafts folder or the sent log by hand. With no
 arguments it prints its help, with examples.
 

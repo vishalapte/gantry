@@ -15,7 +15,7 @@ description: >
 
 # Porkbun DNS
 
-1. IF the prompt gives no arguments, THEN run `python3 ~/.claude/skills/enine-porkbun/porkbun.py` and show its output as the help.
+1. IF the prompt gives no arguments, THEN run `python3.14 ~/.claude/skills/enine-porkbun/porkbun.py` and show its output as the help.
 2. IF the prompt names no verb, THEN ask with AskUserQuestion: `create`, `update`, `delete`, `list`.
 3. Say in that question that Other takes `domain`, to show one domain's records, `capture`, `history`, `restore` or `check`.
 4. Do not mark any option "(Recommended)".

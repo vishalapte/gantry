@@ -17,10 +17,10 @@ description: >
 One script reads and changes SES, then prints the Porkbun commands. Run it; do not change the
 identity in the AWS console or the records in Porkbun's dashboard.
 
-    python3 ~/.claude/skills/enine-aws-ses/ses_identity.py example.com --profile admin            # dry run
-    python3 ~/.claude/skills/enine-aws-ses/ses_identity.py example.com --profile admin --apply    # change SES
-    python3 ~/.claude/skills/enine-aws-ses/ses_identity.py example.com --dkim T1 T2 T3            # no AWS profile
-    python3 ~/.claude/skills/enine-aws-ses/ses_identity.py example.com                            # confirm from the zone
+    python3.14 ~/.claude/skills/enine-aws-ses/ses_identity.py example.com --profile admin            # dry run
+    python3.14 ~/.claude/skills/enine-aws-ses/ses_identity.py example.com --profile admin --apply    # change SES
+    python3.14 ~/.claude/skills/enine-aws-ses/ses_identity.py example.com --dkim T1 T2 T3            # no AWS profile
+    python3.14 ~/.claude/skills/enine-aws-ses/ses_identity.py example.com                            # confirm from the zone
 
 The default is a dry run: it reads SES and the Porkbun zone, prints one row per record and the
 `porkbun.py` commands those rows need, and changes nothing. Only `--apply` changes SES or

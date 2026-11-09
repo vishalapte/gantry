@@ -40,6 +40,10 @@ One run installs into Claude Code, Codex and Pi, from what is in the checkout, u
 changes included. Without `--agent`, it asks at a terminal and refuses anywhere else. A name is
 lowercase letters, digits, `-` and `_`; it goes in place of `<agent>` in `shared/env.json`.
 
+Every script runs on Python 3.14 (`python3.14` on PATH), standard library only. The one
+exception is `omarchy-display-sizing`, which keeps `python3` because it runs on the desktop it
+sizes.
+
 | From | To | Read by |
 |---|---|---|
 | `shared/` (but `skills/`), `pi/` | `~/.gantry/` | every harness |
@@ -453,7 +457,7 @@ user:
 
 ## Tests
 
-    python3 -m unittest discover -p 'test_*.py'
+    python3.14 -m unittest discover -p 'test_*.py'
 
 | Tests | Cover |
 |---|---|

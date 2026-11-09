@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """Set a Porkbun domain's DNS for Fastmail: DKIM and SPF to send, and with --mx, MX to receive.
 
     fm_porkbun.py example.com                       # dry run: plan, preflight; writes nothing

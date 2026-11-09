@@ -4,7 +4,7 @@
 `/enine-porkbun-delete`, `/enine-porkbun-list` and `/enine-porkbun-domain` follow this file.
 The caller fixes the verb; everything else is here, once.
 
-One script does the work: `python3 ~/.claude/skills/enine-porkbun/porkbun.py`. Run it; do not edit
+One script does the work: `python3.14 ~/.claude/skills/enine-porkbun/porkbun.py`. Run it; do not edit
 records by hand in Porkbun's dashboard. With no arguments it prints its help, with examples.
 
 ## The parts of each verb

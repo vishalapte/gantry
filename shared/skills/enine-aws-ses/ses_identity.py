@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """Set up a domain to send through AWS SES: the identity at SES, then the six Porkbun records.
 
     ses_identity.py example.com --profile admin               # dry run: read SES and the zone, give each record a row
@@ -220,7 +220,7 @@ class Row:
 
 def command(account, verb, rtype, name, *rest):
     """One porkbun.py command as an argv list."""
-    return ["python3", str(PORKBUN), verb, rtype, name, *rest, *(["--account", account] if account else [])]
+    return [sys.executable, str(PORKBUN), verb, rtype, name, *rest, *(["--account", account] if account else [])]
 
 
 def given_tokens(ses_tokens, given):

@@ -5,6 +5,10 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+### Changed
+- **Python 3.14.** Every script's shebang, the skills' commands and the pre-push hook name
+  `python3.14`; Python 3.15 breaks pylint 4.0.9. `omarchy-display-sizing` keeps `python3`.
+
 ## 0.19.0 - 2026-11-09
 
 ### Changed

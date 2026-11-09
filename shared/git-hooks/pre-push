@@ -3,7 +3,7 @@
 # repo's own pre-push. git passes the remote name and URL as $1 and $2, however the push was
 # started (alias, script, bash -c).
 dir="$(dirname "$0")"
-python3 "$dir/_boundary.py" "$2" || exit 1
+python3.14 "$dir/_boundary.py" "$2" || exit 1
 
 # One line per ref on stdin: <local ref> <local sha> <remote ref> <remote sha>. A deletion
 # has an all-zero local sha, whichever spelling asked for it (`:branch`, `--delete`, `-d`),

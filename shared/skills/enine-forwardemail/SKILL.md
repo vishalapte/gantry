@@ -14,7 +14,7 @@ description: >
 
 # Forward Email
 
-One script does the work: `python3 ~/.claude/skills/enine-forwardemail/forwardemail.py`. Run it;
+One script does the work: `python3.14 ~/.claude/skills/enine-forwardemail/forwardemail.py`. Run it;
 do not change domains or aliases in Forward Email's web page. With no arguments it prints its
 help, with examples and every field `--set` takes.
 

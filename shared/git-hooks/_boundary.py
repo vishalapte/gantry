@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """Exit 0 only if the push URL in argv[1] is a GitHub repo whose owner is in the org list.
 
 The list is private data, kept out of this repo in ~/.claude/orgs.json, e.g.

@@ -15,9 +15,9 @@ description: >
 
 One script does the work. Run it; do not edit the records by hand in Porkbun's dashboard.
 
-    python3 ~/.claude/skills/enine-porkbun-fastmail/fm_porkbun.py example.com              # dry run
-    python3 ~/.claude/skills/enine-porkbun-fastmail/fm_porkbun.py example.com --apply      # apply + verify
-    python3 ~/.claude/skills/enine-porkbun-fastmail/fm_porkbun.py example.com --mx --apply # also move MX
+    python3.14 ~/.claude/skills/enine-porkbun-fastmail/fm_porkbun.py example.com              # dry run
+    python3.14 ~/.claude/skills/enine-porkbun-fastmail/fm_porkbun.py example.com --apply      # apply + verify
+    python3.14 ~/.claude/skills/enine-porkbun-fastmail/fm_porkbun.py example.com --mx --apply # also move MX
 
 The default is a dry run: it reads the zone, prints the plan and writes nothing. Only
 `--apply` changes a record. Without `--mx` the MX are left alone, so mail keeps arriving where

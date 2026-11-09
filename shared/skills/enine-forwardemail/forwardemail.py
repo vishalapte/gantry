@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """Create, update or delete a Forward Email domain or alias, list the account's domains, or show
 one domain's settings and aliases.
 

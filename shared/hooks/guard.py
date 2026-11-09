@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """gantry's shell-command guard for Codex and Pi: allow, ask or deny, from permissions.json.
 
     guard.py --codex   Codex PreToolUse hook. Prints a deny decision for a command `deny`

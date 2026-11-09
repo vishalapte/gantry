@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """PreToolUse hook: auto-allow a compound Bash command (`a && b`, `a | b`, `a; b`) when every
 part matches an `allow` rule and no part matches a `deny` or `ask` rule.
 

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.14
 """Search, resolve, file and pin the mail in a mail store, and draft and send mail through
 AWS SES.
 
@@ -103,7 +103,7 @@ import mail_send  # noqa: E402
 import mail_store  # noqa: E402
 from mail_store import Refusal  # noqa: E402
 
-COMMAND = "python3 ~/.claude/skills/enine-mail/mail.py"
+COMMAND = "python3.14 ~/.claude/skills/enine-mail/mail.py"
 
 
 # --- search, resolve --------------------------------------------------------------------
