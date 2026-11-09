@@ -1,22 +1,22 @@
-# claude
+# gantry
 
-A Claude Code configuration, installed into `~/.claude`: the settings and guardrails every
+An agent configuration for Claude Code, Codex and Pi: the instructions and guardrails every
 session runs under, and a set of skills that do real work, such as managing DNS at Porkbun,
 setting a domain up for AWS SES, and searching, filing and sending mail.
 
-Everything that installs lives under `dot-claude/`. The tests and this README stay in the
-repo.
+What every harness reads lives under `shared/`; what one harness reads lives under `claude/`,
+`codex/` or `pi/`. The tests and this README stay in the repo.
 
 | Area | What it does | Where |
 |---|---|---|
-| [Settings and guardrails](#settings-and-guardrails) | Permissions, git hooks that refuse unsafe pushes and commits, auto-approval of safe compound commands | `dot-claude/settings.json`, `dot-claude/git-hooks/`, `dot-claude/hooks/` |
-| [Porkbun](#porkbun) | Create, update, delete and read DNS records; capture, undo and preflight a zone | `dot-claude/skills/enine-porkbun*/` |
-| [Forward Email](#forward-email) | Create, update, delete and read Forward Email domains and aliases | `dot-claude/skills/enine-forwardemail/` |
+| [Settings and guardrails](#settings-and-guardrails) | Permissions, git hooks that refuse unsafe pushes and commits, auto-approval of safe compound commands | `shared/permissions.json`, `shared/git-hooks/`, `shared/hooks/`, `claude/settings.json` |
+| [Porkbun](#porkbun) | Create, update, delete and read DNS records; capture, undo and preflight a zone | `shared/skills/enine-porkbun*/` |
+| [Forward Email](#forward-email) | Create, update, delete and read Forward Email domains and aliases | `shared/skills/enine-forwardemail/` |
 | [Domain setups](#domain-setups) | One run sets a domain's DNS for Forward Email, Fastmail or a website host | `enine-porkbun-forwardemail/`, `-fastmail/`, `-eninesites/` |
-| [AWS SES](#aws-ses) | Configure an SES identity and print the records it needs | `dot-claude/skills/enine-aws-ses/` |
-| [Mail](#mail) | Search, resolve, file and pin stored mail; draft and send through SES; rank DMARC reports | `dot-claude/skills/enine-mail/`, `dot-claude/skills/enine-mail-dmarc/` |
+| [AWS SES](#aws-ses) | Configure an SES identity and print the records it needs | `shared/skills/enine-aws-ses/` |
+| [Mail](#mail) | Search, resolve, file and pin stored mail; draft and send through SES; rank DMARC reports | `shared/skills/enine-mail/`, `shared/skills/enine-mail-dmarc/` |
 | [Hosts and desktops](#hosts-and-desktops) | Create Linux accounts over SSH; size an Omarchy desktop's display | `linux-create-user/`, `omarchy-display-sizing/` |
-| [Commands](#commands) | `/lint` and `/review` | `dot-claude/commands/` |
+| [Commands](#commands) | `/lint` and `/review` | `claude/commands/` |
 
 ## How the tools behave
 
@@ -34,45 +34,72 @@ Every script that changes something follows the same rules, so one habit covers 
 
 ## Install
 
-### From a checkout
-
     ./install --agent alice    # --dry-run lists what would be replaced
 
-It installs what is in the checkout, unpushed changes included. It copies every file under
-`dot-claude/` into `~/.claude`, first saving the current `settings.json` and `CLAUDE.md` in
-`~/.claude/backups/`.
+One run installs into Claude Code, Codex and Pi, from what is in the checkout, unpushed
+changes included. Without `--agent`, it asks at a terminal and refuses anywhere else. A name is
+lowercase letters, digits, `-` and `_`; it goes in place of `<agent>` in `shared/env.json`.
 
-`settings.json` ships with `<agent>` in its paths, and the installed copy has the agent's name
-there. Without `--agent`, it asks at a terminal and refuses anywhere else. A name is lowercase
-letters, digits, `-` and `_`.
+| From | To | Read by |
+|---|---|---|
+| `shared/` (but `skills/`), `pi/` | `~/.gantry/` | every harness |
+| `shared/skills/<name>` | `~/.agents/skills/<name>` | Codex, Pi; Claude Code through a link |
+| `claude/` | `~/.claude/` (`$CLAUDE_CONFIG_DIR`) | Claude Code |
+| `codex/hooks.json`, a block in `config.toml`, an `AGENTS.md` link | `~/.codex/` (`$CODEX_HOME`) | Codex |
+| an `AGENTS.md` link, `extensions/gantry-guard.ts` link | `~/.pi/agent/` (`$PI_CODING_AGENT_DIR`) | Pi |
+
+- **Claude Code.** `settings.json` is `claude/settings.json` plus every glob in
+  `shared/permissions.json` as a `Bash(...)` rule plus `shared/env.json` as `env`.
+  `CLAUDE.md` imports `~/.gantry/AGENTS.md`. `skills/<name>` and `git-hooks` are links into
+  `~/.agents/skills` and `~/.gantry`, so every path that names `~/.claude/skills/...` still works.
+- **Codex.** `AGENTS.md` links to `~/.gantry/AGENTS.md`. gantry's one handler is merged into
+  the `Bash` PreToolUse group of `hooks.json`, beside any other repo's. `config.toml` gets one
+  block at the top, between `# >>> gantry` and `# <<< gantry`, holding `approval_policy`,
+  `sandbox_mode` and `shell_environment_policy.set`; install refuses if those keys are set
+  outside it. Codex runs a new or changed hook only after you trust it in `/hooks`.
+- **Pi.** `AGENTS.md` and `extensions/gantry-guard.ts` link into `~/.gantry`.
 
 ### Without a clone
 
-    curl -fsSL https://github.com/vishalapte/claude/archive/refs/heads/main.tar.gz \
-      | tar -xz -C ~/.claude --strip-components=2
-
-`--strip-components=2` drops the archive's top directory and `dot-claude/`, so a top-level
-file such as this README strips to nothing and is skipped. The same command works with GNU
-tar and macOS bsdtar. It holds only while `dot-claude/` is the one directory at the top of
-the repo; a second one would be extracted into `~/.claude` too. It leaves `<agent>` in
-`settings.json`, so change that by hand.
+    tmp=$(mktemp -d)
+    curl -fsSL https://github.com/vishalapte/gantry/archive/refs/heads/main.tar.gz | tar -xz -C "$tmp"
+    "$tmp"/gantry-main/install --agent alice
 
 ### What an install replaces
 
-Both ways replace `settings.json` whole. Any other repo that writes into it, such as
-racecar, must run its own `./install` again afterwards; those installs are safe to re-run.
-Credentials, history, projects and memory in `~/.claude` are never touched, and file modes
-are kept, so `statusline-command.sh` stays executable.
+Every file gantry ships is replaced whole, `settings.json` and `CLAUDE.md` included, so any
+other repo that writes into them, such as racecar or delphi, must run its own `./install` again
+afterwards; those installs are safe to re-run. `hooks.json` and `config.toml` are the
+exceptions: only gantry's handler and block change. Whatever is replaced and was not already
+what gantry ships (`settings.json`, `CLAUDE.md`, `hooks.json`, `config.toml`, an `AGENTS.md`, a
+real directory where a link now goes) is moved to `~/.gantry/backups/<timestamp>/` first.
+Credentials, history, projects and memory are never touched, and file modes are kept, so
+`statusline-command.sh` stays executable.
 
 ## Settings and guardrails
 
-`settings.json` holds the permissions (what runs, what asks, what is denied), the auto-mode
-policy, the status line and UI preferences.
+`shared/permissions.json` holds the shell-command rules: what runs (`allow`), what asks
+(`ask`), what is denied (`deny`), as the globs Claude Code writes inside `Bash(...)`.
+`claude/settings.json` holds Claude Code's rules for its other tools, the auto-mode policy, the
+status line and UI preferences. Each harness keeps the rules its own way:
+
+- **Claude Code** reads them as its own permission rules.
+- **Codex** runs in the `workspace-write` sandbox with `on-request` approvals: `.git` is
+  read-only and the network is off, so every git change, push and network call asks. Its
+  PreToolUse hook, `shared/hooks/guard.py --codex`, blocks what `deny` names.
+- **Pi** has no approvals of its own. `pi/gantry-guard.ts` sends each bash call to
+  `guard.py --pi`: `deny` blocks, `allow` runs, anything else asks. With no screen to ask on
+  (`pi -p`) it blocks what it would ask, and it blocks when the guard cannot run.
+
+`shared/hooks/permissions.py` is the one matcher behind `guard.py` and Claude Code's
+compound-command hook; `test_guard.py` holds what each rule must answer.
 
 ### Git hooks
 
-The hooks apply only to commands Claude Code runs, never to your own terminal:
-`settings.json` points git at them through `env` (`GIT_CONFIG_*` setting `core.hooksPath`).
+The hooks apply only to commands an agent runs, never to your own terminal: `shared/env.json`
+points git at `~/.gantry/git-hooks` (`GIT_CONFIG_*` setting `core.hooksPath`), and every
+harness gets that env: Claude Code through `settings.json`, Codex through
+`shell_environment_policy.set`, Pi through gantry-guard.
 Every hook name other than `pre-push` and `commit-msg` is a symlink to `_dispatch`, which runs
 the repo's own hook, so pre-commit and the rest keep working.
 
@@ -85,7 +112,7 @@ the repo's own hook, so pre-commit and the rest keep working.
   `-d`): git marks every deletion the same way.
 - Skipping or redirecting hooks (`--no-verify`, `core.hooksPath`, `GIT_CONFIG_*`) is denied.
 - `gh` has no hook point: public gists, public repo creation and visibility changes are
-  denied in `settings.json`; other `gh` writes ask.
+  denied in `shared/permissions.json`; other `gh` writes ask.
 
 ### Commits
 
@@ -100,9 +127,10 @@ the repo's own hook, so pre-commit and the rest keep working.
 ### Compound commands
 
 Claude Code asks before `a && b` or `a | b` even when each part is allowed.
-`hooks/compound-command-allow.py` approves such a command when every part matches an `allow`
-rule and none matches an `ask` or `deny` rule; otherwise it stays silent and Claude Code
-decides as usual. It never approves a part it cannot see, such as `$(...)`.
+`claude/hooks/compound-command-allow.py` approves such a command when every part matches an
+`allow` rule and none matches an `ask` or `deny` rule; otherwise it stays silent and Claude
+Code decides as usual. It never approves a part it cannot see, such as `$(...)`. When
+`~/.gantry/hooks/permissions.py` is missing it stays silent too.
 
 ### Plan mode
 
@@ -334,7 +362,7 @@ refuses and names both.
 | `ENINE_MAIL_DRAFTS` | `--drafts DIR` | the drafts folder | `draft`, `send` |
 | `ENINE_MAIL_SENT` | `--sent FILE` | the sent log, one JSON line per send | listing drafts, `send N --apply`; a reply's threading |
 
-`dot-claude/settings.json` sets them in `env`, so every Claude session finds them, and
+`shared/env.json` sets them, so every agent session finds them, and
 `./install --agent NAME` puts the agent's name in place of `<agent>`:
 
     "env": {
@@ -429,7 +457,8 @@ user:
 
 | Tests | Cover |
 |---|---|
-| `test_git_boundary`, `test_compound_allow` | the push and commit hooks; the compound-command hook against every rule in `settings.json` |
+| `test_git_boundary`, `test_compound_allow`, `test_guard` | the push and commit hooks; the compound-command hook and the Codex/Pi guard against every rule in `shared/permissions.json` |
+| `test_install` | `./install` into a scratch home: Claude Code, Codex and Pi |
 | `test_porkbun`, `test_configure_domain_email`, `test_configure_domain_fastmail`, `test_configure_domain_eninesites` | the Porkbun scripts, against a Porkbun fake |
 | `test_porkbun_sandbox` | `porkbun.py` itself on Porkbun's sandbox, when `~/.config/porkbun/credentials.d/sandbox` holds a `pk1_sb_` key; skipped otherwise |
 | `test_forwardemail` | `forwardemail.py`, against a fake Forward Email |

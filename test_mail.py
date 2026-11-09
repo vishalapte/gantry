@@ -1,8 +1,8 @@
-"""Tests for dot-claude/skills/enine-mail: the store, ingest, resolve, pin and the command line.
+"""Tests for shared/skills/enine-mail: the store, ingest, resolve, pin and the command line.
 Run: python3 -m unittest test_mail test_mail_search test_mail_send test_mail_dmarc
 
-Lives at the repo root for the reason test_git_boundary.py gives: a top-level file never
-reaches ~/.claude. The scripts hold no path: every path they read or write (the mail store,
+Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
+installed. The scripts hold no path: every path they read or write (the mail store,
 the owner-address file, the sender config, the drafts folder, the sent log) comes from a flag
 or an ENINE_MAIL_* variable, and MailCase sets only temp-dir values after removing any the
 environment had. Every address, name and message-id here is made up.

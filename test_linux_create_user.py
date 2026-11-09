@@ -1,7 +1,7 @@
-"""Tests for dot-claude/skills/linux-create-user. Run: python3 -m unittest test_linux_create_user
+"""Tests for shared/skills/linux-create-user. Run: python3 -m unittest test_linux_create_user
 
-Lives at the repo root for the reason test_git_boundary.py gives: a top-level file never
-reaches ~/.claude. Every test runs against FakeHost, which replaces the script's one ssh
+Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
+installed. Every test runs against FakeHost, which replaces the script's one ssh
 function: it answers the read-only probe from its own passwd, group and file tables and
 carries out the commands of the apply script. `bash -n` checks every script the run sends.
 Nothing touches the network or a real host.
@@ -19,7 +19,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-SCRIPT = Path(__file__).resolve().parent / "dot-claude" / "skills" / "linux-create-user" / "create_user.py"
+SCRIPT = Path(__file__).resolve().parent / "shared" / "skills" / "linux-create-user" / "create_user.py"
 spec = importlib.util.spec_from_file_location("create_user", SCRIPT)
 cu = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(cu)

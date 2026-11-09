@@ -1,4 +1,4 @@
-"""Tests for dot-claude/skills/enine-mail's dmarc verb: finding DMARC reports by content,
+"""Tests for shared/skills/enine-mail's dmarc verb: finding DMARC reports by content,
 reading them, and ranking threats, holes and statistics.
 Run: python3 -m unittest test_mail_dmarc
 

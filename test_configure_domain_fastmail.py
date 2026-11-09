@@ -1,7 +1,7 @@
-"""Tests for dot-claude/skills/enine-porkbun-fastmail. Run: python3 -m unittest test_configure_domain_fastmail
+"""Tests for shared/skills/enine-porkbun-fastmail. Run: python3 -m unittest test_configure_domain_fastmail
 
-Lives at the repo root for the reason test_git_boundary.py gives: a top-level file never
-reaches ~/.claude. Uses the Porkbun fake from test_configure_domain_email and never touches
+Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
+installed. Uses the Porkbun fake from test_configure_domain_email and never touches
 the network or the real credentials files.
 """
 

@@ -7,7 +7,7 @@ python3 "$dir/_boundary.py" "$2" || exit 1
 
 # One line per ref on stdin: <local ref> <local sha> <remote ref> <remote sha>. A deletion
 # has an all-zero local sha, whichever spelling asked for it (`:branch`, `--delete`, `-d`),
-# so it is caught here rather than by matching command text in settings.json. The lines are
+# so it is caught here rather than by matching command text in the permission rules. The lines are
 # kept byte for byte (the trailing `.` stops $(...) eating the last newline) so the repo's
 # own pre-push reads exactly what git sent.
 refs="$(cat; echo .)"

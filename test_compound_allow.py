@@ -1,7 +1,8 @@
-"""Tests for dot-claude/hooks/compound-command-allow.py. Run: python3 -m unittest test_compound_allow
+"""Tests for claude/hooks/compound-command-allow.py. Run: python3 -m unittest test_compound_allow
 
-The rules come from dot-claude/settings.json, the file ./install ships. Set
-SETTINGS=~/.claude/settings.json to test the installed copy instead. Each `Bash(...)` rule is
+The rules come from shared/permissions.json, which ./install renders into settings.json as
+`Bash(...)` rules. Set SETTINGS=~/.claude/settings.json to test the installed copy instead.
+The hook reads gantry's matcher from ~/.gantry/hooks; each run links that to shared/hooks. Each `Bash(...)` rule is
 turned into a command that matches it (`ls *` becomes `ls x`), and the test checks:
 
 - every allow rule: `x && x` is approved;
@@ -24,9 +25,15 @@ from fnmatch import fnmatchcase
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-HOOK = Path(os.environ.get("HOOK", ROOT / "dot-claude" / "hooks" / "compound-command-allow.py"))
-SETTINGS = Path(os.environ.get("SETTINGS", ROOT / "dot-claude" / "settings.json")).expanduser()
-PERMISSIONS = json.loads(SETTINGS.read_text())["permissions"]
+HOOK = Path(os.environ.get("HOOK", ROOT / "claude" / "hooks" / "compound-command-allow.py"))
+MATCHER = ROOT / "shared" / "hooks"
+if "SETTINGS" in os.environ:
+    SETTINGS = Path(os.environ["SETTINGS"]).expanduser()
+    PERMISSIONS = json.loads(SETTINGS.read_text())["permissions"]
+else:
+    SETTINGS = ROOT / "shared" / "permissions.json"
+    PERMISSIONS = {key: [f"Bash({glob})" for glob in globs]
+                   for key, globs in json.loads(SETTINGS.read_text()).items()}
 NOT_ALLOWED = "no-rule-allows-this"
 
 
@@ -89,12 +96,15 @@ PARSER_LEFT_TO_CLAUDE_CODE = [
 
 
 class CompoundAllow(unittest.TestCase):
-    def decide(self, command, permissions=PERMISSIONS):
+    def decide(self, command, permissions=PERMISSIONS, matcher=True):
         """The hook's decision for `command` under `permissions`: "allow", or None when it
-        says nothing."""
+        says nothing. With matcher=False, ~/.gantry/hooks/permissions.py is missing."""
         with tempfile.TemporaryDirectory() as scratch:
             home = Path(scratch)
             (home / ".claude").mkdir()
+            if matcher:
+                (home / ".gantry").mkdir()
+                (home / ".gantry" / "hooks").symlink_to(MATCHER)
             (home / ".claude" / "settings.json").write_text(json.dumps({"permissions": permissions}))
             out = subprocess.run(
                 [str(HOOK)], input=json.dumps({"tool_input": {"command": command}, "cwd": str(home)}),
@@ -129,6 +139,10 @@ class CompoundAllow(unittest.TestCase):
         for command, why in PARSER_APPROVED:
             with self.subTest(command=command, why=why):
                 self.assertEqual(self.decide(command), "allow")
+
+    def test_without_the_matcher_the_hook_says_nothing(self):
+        self.assertIsNone(self.decide(f"{A} && {B}", matcher=False))
+        self.assertEqual(self.decide(f"{A} && {B}"), "allow")
 
     def test_parser_left_to_claude_code(self):
         for command, why in PARSER_LEFT_TO_CLAUDE_CODE:

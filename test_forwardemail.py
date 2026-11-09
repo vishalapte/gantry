@@ -1,7 +1,7 @@
-"""Tests for dot-claude/skills/enine-forwardemail. Run: python3 -m unittest test_forwardemail
+"""Tests for shared/skills/enine-forwardemail. Run: python3 -m unittest test_forwardemail
 
-Lives at the repo root for the reason test_git_boundary.py gives: a top-level file never
-reaches ~/.claude.
+Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
+installed.
 
 Every test runs against an in-memory Forward Email (FakeForwardEmail replaces the one HTTP
 function, in porkbun_client.py) and never touches the network or the real credentials file.

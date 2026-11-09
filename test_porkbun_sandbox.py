@@ -1,4 +1,4 @@
-"""Live tests for dot-claude/skills/enine-porkbun against Porkbun's sandbox. Run:
+"""Live tests for shared/skills/enine-porkbun against Porkbun's sandbox. Run:
 python3 -m unittest test_porkbun_sandbox
 
 The other Porkbun tests use a fake; these run porkbun.py itself against Porkbun's test system,
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from test_configure_domain_email import pc
 
-SCRIPT = Path(__file__).resolve().parent / "dot-claude" / "skills" / "enine-porkbun" / "porkbun.py"
+SCRIPT = Path(__file__).resolve().parent / "shared" / "skills" / "enine-porkbun" / "porkbun.py"
 ACCOUNT = "sandbox"
 
 

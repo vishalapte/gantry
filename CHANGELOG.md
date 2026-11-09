@@ -5,6 +5,27 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+## 0.19.0 - 2026-11-09
+
+### Changed
+- **Breaking: the repo is gantry, and installs into Claude Code, Codex and Pi.** `dot-claude/`
+  is split: `shared/` (AGENTS.md, skills, git hooks, `permissions.json`, `env.json`, the
+  matcher and guard) and `claude/` (settings, keybindings, status line, commands, the
+  compound-command hook); `codex/` and `pi/` hold each harness's piece. `./install` is now
+  Python and writes `~/.gantry`, `~/.agents/skills`, `~/.claude`, `~/.codex` and `~/.pi/agent`.
+  `~/.claude/skills/<name>` and `~/.claude/git-hooks` become links, so existing paths resolve.
+  Backups go to `~/.gantry/backups/`. The no-clone download now runs `./install`.
+- **The shell-command rules moved to `shared/permissions.json`** and the env to
+  `shared/env.json`; `settings.json` is rendered from them. `core.hooksPath` is now
+  `~/.gantry/git-hooks`.
+
+### Added
+- **Codex:** `workspace-write` sandbox with `on-request` approvals, a PreToolUse hook
+  (`guard.py --codex`) that blocks what `deny` names, the env through
+  `shell_environment_policy.set`, and `AGENTS.md`.
+- **Pi:** the `gantry-guard` extension (deny blocks, allow runs, anything else asks; blocks
+  when it cannot ask), the env, and `AGENTS.md`.
+
 ## 0.18.1 - 2026-11-07
 
 ### Fixed

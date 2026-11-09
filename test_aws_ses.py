@@ -1,7 +1,7 @@
-"""Tests for dot-claude/skills/enine-aws-ses. Run: python3 -m unittest test_aws_ses
+"""Tests for shared/skills/enine-aws-ses. Run: python3 -m unittest test_aws_ses
 
-Lives at the repo root for the reason test_git_boundary.py gives: a top-level file never
-reaches ~/.claude. Replaces the script's one `aws()` call with a fake SES, reads the zone from
+Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
+installed. Replaces the script's one `aws()` call with a fake SES, reads the zone from
 test_porkbun's Porkbun fake with credentials in a temporary home, and points ENINE_MAIL_SENDERS at
 a temporary file, so it never runs the aws CLI, calls Porkbun or reads the real senders.toml.
 """

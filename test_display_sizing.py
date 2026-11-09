@@ -1,7 +1,7 @@
-"""Tests for dot-claude/skills/omarchy-display-sizing. Run: python3 -m unittest test_display_sizing
+"""Tests for shared/skills/omarchy-display-sizing. Run: python3 -m unittest test_display_sizing
 
-Lives at the repo root for the reason test_git_boundary.py gives: a top-level file never
-reaches ~/.claude.
+Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
+installed.
 
 The formula tests pin values read off a 27" iMac (3840x2160, 600 mm wide) on 2026-10-15:
 the scale Omarchy chose and the bar height Hyprland reported.
@@ -14,7 +14,7 @@ import unittest
 from argparse import Namespace
 from pathlib import Path
 
-SCRIPT = (Path(__file__).resolve().parent / "dot-claude" / "skills"
+SCRIPT = (Path(__file__).resolve().parent / "shared" / "skills"
           / "omarchy-display-sizing" / "display_sizing.py")
 spec = importlib.util.spec_from_file_location("display_sizing", SCRIPT)
 ds = importlib.util.module_from_spec(spec)

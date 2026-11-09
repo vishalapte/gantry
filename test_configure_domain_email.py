@@ -1,7 +1,7 @@
-"""Tests for dot-claude/skills/enine-porkbun-forwardemail. Run: python3 -m unittest test_configure_domain_email
+"""Tests for shared/skills/enine-porkbun-forwardemail. Run: python3 -m unittest test_configure_domain_email
 
-Lives at the repo root for the reason test_git_boundary.py gives: a top-level file never
-reaches ~/.claude.
+Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
+installed.
 
 Every test runs against in-memory Forward Email and Porkbun fakes (FakeApis replaces the
 one HTTP function, in porkbun_client.py) and never touches the network or the real credentials files.
@@ -17,7 +17,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-SKILLS = Path(__file__).resolve().parent / "dot-claude" / "skills"
+SKILLS = Path(__file__).resolve().parent / "shared" / "skills"
 
 
 def load(name, filename):

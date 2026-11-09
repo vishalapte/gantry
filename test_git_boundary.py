@@ -1,10 +1,11 @@
-"""Tests for dot-claude/git-hooks. Run: python3 -m unittest test_git_boundary
+"""Tests for shared/git-hooks. Run: python3 -m unittest test_git_boundary
 
-Lives at the repo root on purpose: the install extracts with --strip-components=2, so a
-top-level file never reaches ~/.claude, while a tests/ directory would.
+Lives at the repo root on purpose: ./install copies only shared/, claude/, codex/ and pi/, so a
+top-level file is never installed.
 
-Each test gets a scratch HOME whose ~/.claude/git-hooks links to this checkout's hooks, and
-git is pointed at it exactly the way settings.json does: its `env`, read from the file, `~` included.
+Each test gets a scratch HOME whose ~/.gantry/git-hooks links to this checkout's hooks, and
+git is pointed at it exactly the way every harness is: shared/env.json, read from the file, `~`
+included.
 """
 
 import json
@@ -14,21 +15,22 @@ import tempfile
 import unittest
 from pathlib import Path
 
-HOOKS = Path(__file__).resolve().parent / "dot-claude" / "git-hooks"
-SETTINGS = Path(__file__).resolve().parent / "dot-claude" / "settings.json"
+HOOKS = Path(__file__).resolve().parent / "shared" / "git-hooks"
+ENV = Path(__file__).resolve().parent / "shared" / "env.json"
 
 
 class GitBoundary(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         (self.tmp / ".claude").mkdir()
-        (self.tmp / ".claude" / "git-hooks").symlink_to(HOOKS)
+        (self.tmp / ".gantry").mkdir()
+        (self.tmp / ".gantry" / "git-hooks").symlink_to(HOOKS)
         self.orgs = self.tmp / ".claude" / "orgs.json"
         self.orgs.write_text('["My-Org", "me"]')
         self.env = {
             "HOME": str(self.tmp), "PATH": os.environ["PATH"],
             "GIT_CONFIG_NOSYSTEM": "1",
-            **json.loads(SETTINGS.read_text())["env"],
+            **json.loads(ENV.read_text()),
             "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
             "GIT_COMMITTER_EMAIL": "t@t",
         }
