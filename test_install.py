@@ -169,6 +169,58 @@ class Install(unittest.TestCase):
         self.assertEqual(os.readlink(link), str(self.gantry / "pi" / "gantry-guard.ts"))
         self.assertEqual(link.read_bytes(), (ROOT / "pi" / "gantry-guard.ts").read_bytes())
 
+    def fake_install(self, name, code=0):
+        """An install script in its own repo dir that logs its cwd and args, then exits `code`."""
+        repo = self.home / "repos" / name
+        repo.mkdir(parents=True)
+        script = repo / "install"
+        script.write_text(f'#!/bin/sh\necho "{name} $(pwd -P) $*" >> "$HOME/ran.log"\nexit {code}\n')
+        script.chmod(0o755)
+        return script
+
+    def ran(self):
+        log = self.home / "ran.log"
+        return log.read_text().splitlines() if log.exists() else []
+
+    def test_listed_installs_run_in_order_from_their_own_dir(self):
+        first, second = self.fake_install("racecar"), self.fake_install("delphi")
+        self.gantry.mkdir()
+        (self.gantry / "installs").write_text(
+            f"# after gantry\n{first}\n\n~/repos/delphi/install\n")
+        self.install()
+        self.assertTrue(self.settings.exists(), "gantry's own install ran first")
+        self.assertEqual(self.ran(), [f"racecar {first.parent.resolve()} ",
+                                      f"delphi {second.parent.resolve()} "])
+        self.install()
+        self.assertEqual(len(self.ran()), 4, "they run again when gantry already matches")
+
+    def test_the_first_failing_install_stops_the_rest(self):
+        bad, after = self.fake_install("bad", code=3), self.fake_install("after")
+        self.gantry.mkdir()
+        (self.gantry / "installs").write_text(f"{bad}\n{after}\n")
+        result = self.run_install("--agent", "alice")
+        self.assertEqual(result.returncode, 3)
+        self.assertIn(f"{bad} exited 3", result.stderr)
+        self.assertEqual([line.split()[0] for line in self.ran()], ["bad"])
+
+    def test_a_missing_listed_install_fails(self):
+        self.gantry.mkdir()
+        (self.gantry / "installs").write_text(f"{self.home / 'nowhere' / 'install'}\n")
+        result = self.run_install("--agent", "alice")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("could not run", result.stderr)
+
+    def test_a_dry_run_passes_dry_run_to_listed_installs(self):
+        script = self.fake_install("racecar")
+        self.gantry.mkdir()
+        (self.gantry / "installs").write_text(f"{script}\n")
+        self.install("--dry-run")
+        self.assertEqual(self.ran(), [f"racecar {script.parent.resolve()} --dry-run"])
+        self.assertFalse(self.claude.exists())
+
+    def test_without_a_list_install_says_where_it_goes(self):
+        self.assertIn(str(self.gantry / "installs"), self.install().stdout)
+
     def test_a_pycache_directory_is_not_installed(self):
         repo = self.home / "repo"
         shutil.copytree(ROOT, repo, ignore=shutil.ignore_patterns(".git", "__pycache__"))

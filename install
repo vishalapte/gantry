@@ -18,8 +18,9 @@ What goes where:
   into ~/.gantry.
 
 Replace, not merge, for every file gantry ships: settings.json and CLAUDE.md are written whole,
-which removes what other repos' installs put there, so run those again afterwards (racecar,
-delphi). hooks.json and config.toml are the exceptions: only gantry's own entry or block
+which removes what other repos' installs put there. So after its own work, install runs each
+path listed in ~/.gantry/installs (one per line, yours to write; gantry never ships or
+overwrites it), in order, stopping at the first that fails; --dry-run is passed through. hooks.json and config.toml are the exceptions: only gantry's own entry or block
 changes. Anything replaced that gantry did not write identically before is moved to
 ~/.gantry/backups/<timestamp>/ first. Paths gantry does not ship are never touched.
 
@@ -30,6 +31,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 import tomllib
@@ -39,6 +41,7 @@ SRC = Path(__file__).resolve().parent
 HOME = Path.home()
 GANTRY = HOME / ".gantry"
 AGENT_SKILLS = HOME / ".agents" / "skills"
+INSTALLS = GANTRY / "installs"
 CLAUDE = Path(os.environ.get("CLAUDE_CONFIG_DIR") or HOME / ".claude")
 CODEX = Path(os.environ.get("CODEX_HOME") or HOME / ".codex")
 PI = Path(os.environ.get("PI_CODING_AGENT_DIR") or HOME / ".pi" / "agent")
@@ -256,6 +259,36 @@ def write(path, entry, backup, backed_up):
         path.chmod(entry[2])
 
 
+def run_installs(dry_run):
+    """Run each install listed in ~/.gantry/installs, in order; the exit code of the first that fails.
+
+    One path per line; blank lines and lines starting with `#` are skipped, and `~` is
+    expanded. Each runs from its own directory, with `--dry-run` when this run has it.
+    """
+    try:
+        lines = INSTALLS.read_text().splitlines()
+    except FileNotFoundError:
+        print(f"install: no {INSTALLS}; list other repos' installs there, one path per line, "
+              "to run them after this one")
+        return 0
+    for line in lines:
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        path = Path(line.strip()).expanduser()
+        print(f"install: running {path}{' --dry-run' if dry_run else ''}")
+        try:
+            code = subprocess.run([str(path), *(["--dry-run"] if dry_run else [])],
+                                  cwd=path.parent, check=False).returncode
+        except OSError as exc:
+            print(f"install: {path} could not run: {exc}", file=sys.stderr)
+            return 1
+        if code != 0:
+            print(f"install: {path} exited {code}; the installs after it did not run",
+                  file=sys.stderr)
+            return code
+    return 0
+
+
 def main(argv):
     agent, dry_run = parse_args(argv)
     try:
@@ -266,24 +299,20 @@ def main(argv):
     changed = [path for path, entry in want.items() if not holds(path, entry)]
     if not changed:
         print("install: Claude Code, Codex and Pi already match this checkout")
-        return 0
     for path in changed:
         print(f"install: {'would replace' if dry_run else 'replacing'} {path}")
-    if dry_run:
-        return 0
-    backup = GANTRY / "backups" / time.strftime("pre-install-%Y%m%d-%H%M%S")
-    for path in changed:
-        write(path, want[path], backup, backed_up)
-    if (CODEX / "hooks.json") in changed:
-        print("install: Codex runs a new or changed hook only after you trust it: open codex "
-              "and run /hooks once")
-    if not (HOME / ".claude" / "orgs.json").is_file():
-        print(f"install: {HOME / '.claude' / 'orgs.json'} is missing, so every push an agent "
-              "runs will be refused; copy orgs.example.json there and list your owners",
-              file=sys.stderr)
-    print("install: done. Now re-run each repo's ./install (racecar, delphi) to put back their "
-          "hooks and imports.")
-    return 0
+    if changed and not dry_run:
+        backup = GANTRY / "backups" / time.strftime("pre-install-%Y%m%d-%H%M%S")
+        for path in changed:
+            write(path, want[path], backup, backed_up)
+        if (CODEX / "hooks.json") in changed:
+            print("install: Codex runs a new or changed hook only after you trust it: open "
+                  "codex and run /hooks once")
+        if not (HOME / ".claude" / "orgs.json").is_file():
+            print(f"install: {HOME / '.claude' / 'orgs.json'} is missing, so every push an "
+                  "agent runs will be refused; copy orgs.example.json there and list your owners",
+                  file=sys.stderr)
+    return run_installs(dry_run)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,12 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+## 0.20.0 - 2026-11-09
+
+### Added
+- **`~/.gantry/installs`**: `./install` runs each install listed there, one path per line,
+  after its own, in order, stopping at the first that fails; `--dry-run` is passed through.
+
 ### Changed
 - **Python 3.14.** Every script's shebang, the skills' commands and the pre-push hook name
   `python3.14`; Python 3.15 breaks pylint 4.0.9. `omarchy-display-sizing` keeps `python3`.

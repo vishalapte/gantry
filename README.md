@@ -71,9 +71,15 @@ sizes.
 
 ### What an install replaces
 
-Every file gantry ships is replaced whole, `settings.json` and `CLAUDE.md` included, so any
-other repo that writes into them, such as racecar or delphi, must run its own `./install` again
-afterwards; those installs are safe to re-run. `hooks.json` and `config.toml` are the
+Every file gantry ships is replaced whole, `settings.json` and `CLAUDE.md` included, which
+removes what other repos' installs, such as racecar's or delphi's, wrote there. So after its own
+work, `./install` runs each install listed in `~/.gantry/installs`, in order, from that install's
+own directory, and stops at the first that fails; `--dry-run` is passed through. The file is
+yours: one path per line, `#` for a comment, `~` allowed. gantry never ships or overwrites it.
+
+    ~/dev/enineinc/racecar/install
+    ~/dev/vishalapte/delphi/install
+ `hooks.json` and `config.toml` are the
 exceptions: only gantry's handler and block change. Whatever is replaced and was not already
 what gantry ships (`settings.json`, `CLAUDE.md`, `hooks.json`, `config.toml`, an `AGENTS.md`, a
 real directory where a link now goes) is moved to `~/.gantry/backups/<timestamp>/` first.
