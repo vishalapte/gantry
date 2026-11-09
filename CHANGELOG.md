@@ -5,6 +5,13 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+## 0.21.0 - 2026-11-09
+
+### Changed
+- **A merge commit is refused only where history must stay linear**: `main`, `master`, a
+  detached HEAD, and a branch GitHub's rules hold to linear history (a failed lookup refuses).
+  Every other branch takes merge commits, so a scratch repo's `left`/`right` merge passes.
+
 ## 0.20.0 - 2026-11-09
 
 ### Added

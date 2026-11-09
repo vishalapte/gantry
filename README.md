@@ -126,9 +126,13 @@ the repo's own hook, so pre-commit and the rest keep working.
 
 ### Commits
 
-- In any repo, a commit Claude Code makes is refused when it is a merge commit, carries a
-  `Co-Authored-By: Claude` or `Claude-Session:` trailer, or has a `Bump version to X.Y.Z.`
-  line that is not the message's last line.
+- In any repo, a commit an agent makes is refused when it carries a `Co-Authored-By: Claude`
+  or `Claude-Session:` trailer, or has a `Bump version to X.Y.Z.` line that is not the
+  message's last line.
+- A merge commit is refused on `main`, on `master`, on a detached HEAD, and on a branch whose
+  `origin` is on GitHub and whose GitHub rules include `required_linear_history` (read with
+  `gh api repos/<owner>/<repo>/rules/branches/<branch>`). When that lookup fails, the merge
+  is refused too. Any other branch may take a merge commit.
 - `git commit -n` is denied like `--no-verify`.
 - `pull.ff=only` makes a pull that cannot fast-forward fail instead of merging.
 - Commands that move a branch (merge, reset, rebase, cherry-pick, revert, `branch -f` and the

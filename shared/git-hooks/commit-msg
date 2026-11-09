@@ -1,13 +1,38 @@
 #!/usr/bin/env bash
-# Refuse a merge commit, a Claude trailer, and a version bump line that is not the last line,
-# then run the repo's own commit-msg. git runs this for every commit that writes a message:
-# -m, -F, --amend, an editor, and the commit a merge makes, conflicted or not. A squash merge
-# leaves no MERGE_HEAD, so it passes.
+# Refuse a merge commit onto a branch that must stay linear, a Claude trailer, and a version
+# bump line that is not the last line, then run the repo's own commit-msg. git runs this for
+# every commit that writes a message: -m, -F, --amend, an editor, and the commit a merge makes,
+# conflicted or not. A squash merge leaves no MERGE_HEAD, so it passes.
+#
+# A branch must stay linear when it is main or master, when HEAD is detached (no branch to
+# judge), or when origin is on GitHub and GitHub's rules for the branch include
+# required_linear_history. A failed lookup refuses: it cannot show the branch is free to merge.
 dir="$(dirname "$0")"
 
-if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
-    echo "commit-msg: refusing a merge commit; history stays linear (git merge --abort, then rebase or squash)" >&2
+refuse_merge() {
+    echo "commit-msg: refusing a merge commit: $1 (git merge --abort, then rebase or squash)" >&2
     exit 1
+}
+
+# owner/repo when the URL is a GitHub remote (github.com or a *.github.com ssh alias).
+github_repo() {
+    local re='^(ssh://)?(git@|https://([^@/]*@)?)([A-Za-z0-9._-]*\.)?github\.com[:/]([^/]+)/([^/]+)/?$'
+    [[ "$1" =~ $re ]] || return 1
+    local repo="${BASH_REMATCH[6]%/}"
+    echo "${BASH_REMATCH[5]}/${repo%.git}"
+}
+
+if git rev-parse -q --verify MERGE_HEAD >/dev/null; then
+    branch="$(git symbolic-ref -q --short HEAD)" || refuse_merge "HEAD is detached"
+    case "$branch" in
+        main | master) refuse_merge "$branch stays linear" ;;
+    esac
+    if repo="$(github_repo "$(git remote get-url origin 2>/dev/null)")"; then
+        rules="$(gh api "repos/$repo/rules/branches/$branch" \
+            --jq '[.[] | select(.type == "required_linear_history")] | length' 2>&1)" \
+            || refuse_merge "could not read GitHub's rules for $repo $branch: $rules"
+        [ "$rules" = 0 ] || refuse_merge "GitHub requires linear history on $repo $branch"
+    fi
 fi
 
 # The message as git will store it: comments and trailing blank lines removed.

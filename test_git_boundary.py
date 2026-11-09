@@ -35,7 +35,7 @@ class GitBoundary(unittest.TestCase):
             "GIT_COMMITTER_EMAIL": "t@t",
         }
         self.git("init", "-q", "--bare", "remote.git", cwd=self.tmp)
-        self.git("init", "-q", "repo", cwd=self.tmp)
+        self.git("init", "-q", "-b", "main", "repo", cwd=self.tmp)
         self.repo = self.tmp / "repo"
         self.git("commit", "-q", "--allow-empty", "-m", "x")
 
@@ -188,16 +188,69 @@ class GitBoundary(unittest.TestCase):
     def head(self):
         return self.git("rev-parse", "HEAD").stdout
 
-    def test_merge_commit_refused(self):
+    def merge(self, onto, *, check=False):
+        """Merge f into `onto` (created from main when missing) with a merge commit."""
+        if onto is not None:
+            self.git("checkout", "-q", "-B", onto, "main")
+        return self.git("merge", "--no-ff", "f", "-m", "merge", check=check)
+
+    def parents(self):
+        return len(self.git("rev-list", "--parents", "-n", "1", "HEAD").stdout.split()) - 1
+
+    def fake_gh(self, script):
+        """A gh on PATH that logs its arguments to gh.log, then runs `script`."""
+        bin_dir = self.tmp / "bin"
+        bin_dir.mkdir(exist_ok=True)
+        gh = bin_dir / "gh"
+        gh.write_text(f'#!/bin/sh\necho "$*" >> {self.tmp / "gh.log"}\n{script}\n')
+        gh.chmod(0o755)
+        self.env["PATH"] = f"{bin_dir}:{self.env['PATH']}"
+
+    def test_merge_commit_refused_on_main_and_master(self):
         self.branches()
-        before = self.head()
-        for argv in (["merge", "f", "-m", "merge"], ["merge", "--no-ff", "f", "-m", "merge"]):
-            with self.subTest(argv=argv):
-                out = self.git(*argv, check=False)
+        for branch in ("main", "master"):
+            with self.subTest(branch=branch):
+                self.git("checkout", "-q", "-B", branch, "main")
+                before = self.head()
+                out = self.merge(None)
                 self.assertNotEqual(out.returncode, 0)
-                self.assertIn("refusing a merge commit", out.stderr)
+                self.assertIn(f"refusing a merge commit: {branch} stays linear", out.stderr)
                 self.assertEqual(self.head(), before)
                 self.git("merge", "--abort")
+
+    def test_merge_commit_refused_on_a_detached_head(self):
+        self.branches()
+        self.git("checkout", "-q", "--detach", "main")
+        out = self.merge(None)
+        self.assertIn("HEAD is detached", out.stderr)
+        self.git("merge", "--abort")
+
+    def test_merge_commit_allowed_on_a_branch_with_no_github_remote(self):
+        self.branches()
+        self.fake_gh("exit 1")
+        self.assertEqual(self.merge("left").returncode, 0)
+        self.assertEqual(self.parents(), 2)
+        self.assertFalse((self.tmp / "gh.log").exists(), "no GitHub remote, so no lookup")
+
+    def test_merge_commit_follows_githubs_linear_history_rule(self):
+        self.branches()
+        self.git("remote", "add", "origin", "git@github.com:my-org/repo.git")
+        cases = (("echo 1", "GitHub requires linear history on my-org/repo left"),
+                 ("echo 'HTTP 401' >&2; exit 1", "could not read GitHub's rules for my-org/repo left"),
+                 ("echo 0", None))
+        for script, refusal in cases:
+            with self.subTest(gh=script):
+                self.fake_gh(script)
+                out = self.merge("left")
+                if refusal:
+                    self.assertNotEqual(out.returncode, 0)
+                    self.assertIn(refusal, out.stderr)
+                    self.git("merge", "--abort")
+                else:
+                    self.assertEqual(out.returncode, 0, out.stderr)
+                    self.assertEqual(self.parents(), 2)
+        self.assertIn("api repos/my-org/repo/rules/branches/left --jq",
+                      (self.tmp / "gh.log").read_text())
 
     def test_squash_merge_passes(self):
         self.branches()
