@@ -5,6 +5,12 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+## 0.21.1 - 2026-11-10
+
+### Fixed
+- **`./install` announces each listed install before that install's output**, also when its
+  output goes to a pipe or a file, where the announcement used to come after.
+
 ## 0.21.0 - 2026-11-09
 
 ### Changed

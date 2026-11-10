@@ -275,7 +275,7 @@ def run_installs(dry_run):
         if not line.strip() or line.lstrip().startswith("#"):
             continue
         path = Path(line.strip()).expanduser()
-        print(f"install: running {path}{' --dry-run' if dry_run else ''}")
+        print(f"install: running {path}{' --dry-run' if dry_run else ''}", flush=True)
         try:
             code = subprocess.run([str(path), *(["--dry-run"] if dry_run else [])],
                                   cwd=path.parent, check=False).returncode

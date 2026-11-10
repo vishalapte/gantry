@@ -194,6 +194,17 @@ class Install(unittest.TestCase):
         self.install()
         self.assertEqual(len(self.ran()), 4, "they run again when gantry already matches")
 
+    def test_each_listed_install_is_announced_before_its_own_output(self):
+        repo = self.home / "repos" / "racecar"
+        repo.mkdir(parents=True)
+        script = repo / "install"
+        script.write_text('#!/bin/sh\necho "racecar install output"\n')
+        script.chmod(0o755)
+        self.gantry.mkdir()
+        (self.gantry / "installs").write_text(f"{script}\n")
+        out = self.install().stdout
+        self.assertLess(out.index(f"install: running {script}"), out.index("racecar install output"))
+
     def test_the_first_failing_install_stops_the_rest(self):
         bad, after = self.fake_install("bad", code=3), self.fake_install("after")
         self.gantry.mkdir()
