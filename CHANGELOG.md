@@ -5,6 +5,22 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+## 0.23.0 - 2026-11-14
+
+### Changed
+- **qux-mail-dmarc, renamed from enine-mail-dmarc, reads the mail sent to dmarc@.** A report
+  is a message whose To header names a dmarc@ address, on any domain; the guess from subject,
+  sender and content type is gone. On the store of 2026-11-14 that is 97 reports: it finds
+  JCOM's, whose ISO-2022-JP subjects the guess missed (3), and drops 40 sent to security@ and
+  other addresses, the newest from 2025-12-07.
+- **qux-mail-dmarc counts blocked attempts in the statistics, not as threats.** A source that
+  never passed and whose every message was quarantined or rejected is the policy working, so it
+  is a BLOCKED table per domain (sources, messages, quarantined, rejected, first, last), in
+  `--json` as `stats.blocked`. THREATS keeps what the owner can act on: `high` (delivered) and
+  `low` (the domain's own sender failing). Exit 1 needs a recent `high` threat, a recent failure
+  report or a high hole. On the store of 2026-11-14 the 27 recent failures were all blocked, so
+  the run exits 0.
+
 ## 0.22.0 - 2026-11-14
 
 ### Changed

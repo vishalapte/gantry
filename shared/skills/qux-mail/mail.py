@@ -54,16 +54,17 @@ Verbs
   send     with N, show draft N as it will go; with N --apply, send it through SES. With message
            args and no N, run draft first, then show the new draft. --apply takes only a draft
            number, so what goes out is the draft that was shown
-  dmarc    read the DMARC reports in the store, screened by header (aggregate XML zipped, gzipped
-           or bare; RFC 6591 failure reports), and rank them: threats (senders that failed
-           DMARC, recent and delivered first), holes (p=none, pct below 100, sp=none, senders
-           passing on SPF alone, domains whose reports stopped), then statistics; read-only
+  dmarc    read the DMARC reports in the store, the mail sent to dmarc@ (aggregate XML zipped,
+           gzipped or bare; RFC 6591 failure reports), and rank them: threats (failed DMARC and
+           delivered, or a sender that also passes), holes (p=none, pct below 100, sp=none,
+           senders passing on SPF alone, domains whose reports stopped), then statistics, which
+           count the blocked attempts; read-only
 
 Exit
   0  done, nothing to do, or printed
   1  changes pending (a dry run), or something wrong found: nothing matched, a message-id not
-     in the store, an unlocked or dangling pin, a file skipped, a recent DMARC threat or a
-     high-severity DMARC hole
+     in the store, an unlocked or dangling pin, a file skipped, a recent delivered DMARC
+     threat or a high-severity DMARC hole
   2  refused: a bad argument, a path not given, a missing sender config, a missing draft, an
      SES refusal
 
@@ -411,7 +412,7 @@ def print_dmarc(result):
           f"{len(result['failure_reports'])} failure reports. Recent means {result['recent_since']} or later "
           f"(--days {result['recent_days']}).")
     print()
-    print("THREATS: senders that failed DMARC, recent and worst first")
+    print("THREATS: senders that failed DMARC and were delivered, or that also pass; recent first")
     if result["threats"]:
         _table(["Sev", "Recent", "Domain", "Source IP", "Msgs", "Delivered", "Blocked", "First", "Last",
                 "Passed elsewhere", "DKIM/SPF domain", "Reported by"],
@@ -437,6 +438,14 @@ def print_dmarc(result):
     else:
         print("none")
     stats = result["stats"]
+    print()
+    print("BLOCKED: strangers that failed DMARC, every message quarantined or rejected (the policy working)")
+    if stats["blocked"]:
+        _table(["Domain", "Sources", "Msgs", "Quarantined", "Rejected", "First", "Last"],
+               [[b["domain"], b["sources"], b["messages"], b["quarantined"], b["rejected"], b["first"],
+                 b["last"]] for b in stats["blocked"]], right=(1, 2, 3, 4))
+    else:
+        print("none")
     print()
     print("BY DOMAIN")
     _table(["Domain", "Policy", "Last report", "Reports", "Msgs", "Failed", "Pass"],

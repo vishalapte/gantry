@@ -157,13 +157,24 @@ class FindingReports(DmarcCase):
         self.assertEqual(result["candidates"], 0)
         self.assertEqual(result["other_dmarc_mail"], [])
 
-    def test_a_report_whose_headers_do_not_mark_it_is_not_read(self):
+    def test_a_report_sent_to_dmarc_is_read_whatever_its_subject_and_sender(self):
         msg = EmailMessage()
-        msg["From"], msg["Subject"] = "reports@rcv.example", "Monthly summary"
+        msg["From"], msg["To"] = "postmaster@rcv.example", "DMARC <dmarc@example.net>"
+        msg["Subject"] = "=?iso-2022-jp?B?GyRCJUklYSUkJXMbKEI=?="  # a subject naming nothing
         msg.set_content("attached")
         msg.add_attachment(gzip.compress(report_xml(records=[("192.0.2.1", 1, "none", "pass", "pass", D)])),
                            maintype="application", subtype="gzip", filename="r.xml.gz")
         self.put(msg.as_bytes())
+        result = self.scan()
+        self.assertEqual((result["candidates"], result["stats"]["total"]["reports"]), (1, 1))
+
+    def test_a_report_sent_to_another_address_is_not_read(self):
+        for to in ("security@example.org", "admin@dmarc.example.org", "notdmarc@example.org"):
+            with self.subTest(to=to):
+                raw = message("Report Domain: example.org", attach=gzip.compress(
+                    report_xml(records=[("192.0.2.1", 1, "none", "pass", "pass", D)])))
+                raw = raw.replace(b"To: dmarc@example.org", b"To: " + to.encode(), 1)
+                self.put(raw, name=to.partition("@")[0])
         result = self.scan()
         self.assertEqual((result["candidates"], result["stats"]["total"]["reports"]), (0, 0))
 
@@ -192,18 +203,22 @@ class Ranking(DmarcCase):
         self.put(message(f"Report Domain: {kwargs.get('domain', D)}",
                          attach=gzip.compress(report_xml(rid=name, **kwargs))), name=name, month=month)
 
-    def test_threats_rank_recent_then_delivered_then_blocked_then_legitimate(self):
+    def test_threats_rank_recent_then_delivered_then_legitimate_and_blocked_go_to_stats(self):
         old = TODAY - timedelta(days=200)
         self.add("legit", records=[("192.0.2.1", 5, "none", "pass", "pass", D),
                                    ("192.0.2.1", 1, "none", "fail", "fail", D)])
         self.add("blocked", records=[("198.51.100.7", 2, "reject", "fail", "fail", "spoof.example")])
         self.add("delivered", p="none", records=[("203.0.113.5", 3, "none", "fail", "fail", "spoof.example")])
         self.add("old", day=old, p="none", records=[("203.0.113.99", 9, "none", "fail", "fail", "spoof.example")])
-        threats = self.scan()["threats"]
-        self.assertEqual([(t["source_ip"], t["severity"], t["recent"]) for t in threats],
-                         [("203.0.113.5", "high", True), ("198.51.100.7", "medium", True),
-                          ("192.0.2.1", "low", True), ("203.0.113.99", "high", False)])
-        self.assertEqual((threats[1]["rejected"], threats[1]["delivered"]), (2, 0))
+        self.add("quarantined", records=[("198.51.100.8", 1, "quarantine", "fail", "fail", "spoof.example")])
+        result = self.scan()
+        self.assertEqual([(t["source_ip"], t["severity"], t["recent"]) for t in result["threats"]],
+                         [("203.0.113.5", "high", True), ("192.0.2.1", "low", True),
+                          ("203.0.113.99", "high", False)])
+        self.assertEqual(result["stats"]["blocked"],
+                         [{"domain": D, "sources": 2, "messages": 3, "quarantined": 1, "rejected": 2,
+                           "first": result["stats"]["blocked"][0]["first"],
+                           "last": result["stats"]["blocked"][0]["last"]}])
 
     def test_holes_name_a_weak_policy_and_a_sender_passing_on_spf_alone(self):
         self.add("none", records=[("192.0.2.1", 1, "none", "pass", "pass", D)], p="none")
@@ -270,7 +285,7 @@ class Ranking(DmarcCase):
 
 
 class DmarcCommandLine(DmarcCase):
-    def test_exit_1_on_a_recent_threat_and_0_when_clean(self):
+    def test_exit_1_on_a_recent_delivered_threat_and_0_on_a_blocked_one(self):
         self.root.mkdir()
         today = date.today()
         self.put(message("Report Domain: example.org", attach=gzip.compress(
@@ -280,10 +295,17 @@ class DmarcCommandLine(DmarcCase):
         self.assertIn("THREATS", out)
         self.put(message("Report Domain: example.org", attach=gzip.compress(
             report_xml(rid="r2", day=today, records=[("198.51.100.7", 1, "reject", "fail", "fail", "x.example")]))),
-            name="bad")
+            name="blocked")
+        code, out, _ = self.run_cli("dmarc")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("198.51.100.7", out)  # counted per domain under BLOCKED, not listed as a threat
+        self.assertGreater(out.index("BLOCKED"), out.index("HOLES"))
+        self.put(message("Report Domain: example.org", attach=gzip.compress(
+            report_xml(rid="r3", day=today, p="none", records=[("198.51.100.9", 1, "none", "fail", "fail", "x.example")]))),
+            name="delivered")
         code, out, _ = self.run_cli("dmarc")
         self.assertEqual(code, 1)
-        self.assertLess(out.index("198.51.100.7"), out.index("BY DOMAIN"))
+        self.assertLess(out.index("198.51.100.9"), out.index("BY DOMAIN"))
 
     def test_refuses_without_a_store(self):
         with mock.patch.dict("os.environ", {"ENINE_MAIL_STORE": ""}):

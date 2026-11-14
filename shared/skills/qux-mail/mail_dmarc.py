@@ -4,12 +4,12 @@ Two kinds of report reach a domain's owner. An aggregate report (RFC 7489 sectio
 `rua` address) is an XML file, zipped or gzipped or bare, with one row per sending IP: how many
 messages it sent as the domain, and whether DKIM and SPF passed and aligned. A failure report
 (RFC 6591, the `ruf` address) is one message that failed, as a multipart/report with a
-message/feedback-report part. A message is screened by its subject, sender and content type, not
-by the address it was sent to, because a domain's `rua` has pointed at different mailboxes over
-the years; what passes is read for what it holds, and what does not is never opened.
+message/feedback-report part. The reports are the messages whose To header names a dmarc@
+address, on any domain; each is read for what it holds, and no other message is opened.
 
-The analysis puts threats first: senders that failed DMARC while using the domain, newest and
-delivered first. Then holes: a published policy that lets spoofed mail through, and legitimate
+The analysis puts threats first: senders that failed DMARC while using the domain and were
+delivered, or the domain's own senders failing. A stranger whose every message was quarantined
+or rejected is the policy working, and is counted with the statistics as blocked. Then holes: a published policy that lets spoofed mail through, and legitimate
 senders whose pass rests on one mechanism. Then the statistics.
 
 Every report is untrusted input: decompressed size is capped and a part that will not parse is
@@ -26,7 +26,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 from email import policy
 from email.parser import BytesParser, HeaderParser
-from email.utils import parsedate_to_datetime
+from email.utils import getaddresses, parsedate_to_datetime
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -39,26 +39,21 @@ RECENT_DAYS = 30  # a failure this many days before today, or fewer, is recent
 QUIET_DAYS = 60  # a domain with no report for longer than this has lost its monitoring, and
 # a hole whose newest evidence is older than this is not reported: it may long since be fixed
 
-_SCREEN_SUBJECT = re.compile(rb"report domain|(?<![a-z])dmarc|report-id")  # not Landmarc
-_DMARC_WORD = re.compile(r"(?<![a-z])dmarc", re.I)
-_FEEDBACK_CT = re.compile(rb"multipart/report[^\n]*feedback-report|report-type=\"?feedback-report")
+DMARC_LOCAL = "dmarc"  # the local part of the address a report is sent to: dmarc@<any domain>
+_DMARC_WORD = re.compile(r"(?<![a-z])dmarc", re.I)  # not Landmarc
 
 
 # --------------------------------------------------------------------------- #
 # finding reports
 # --------------------------------------------------------------------------- #
-def may_be_report(head: bytes) -> bool:
-    """Whether a message's header block can belong to a DMARC report.
+def sent_to_dmarc(head: bytes) -> bool:
+    """Whether a message's To header names a dmarc@ address, on any domain.
 
-    An aggregate report's subject carries "Report Domain:" (RFC 7489 section 7.2.1.1) and the
-    reporters that do not follow it still name DMARC; a failure report is a multipart/report of
-    report-type feedback-report. Anything else is skipped without a full parse.
+    Read from the header block's bytes, so a message sent elsewhere is skipped without a parse.
     """
-    low = head.lower()
-    subject = b" ".join(header_values(low, (b"subject",)))
-    sender = b" ".join(header_values(low, (b"from",)))
-    ctype = b" ".join(header_values(low, (b"content-type",)))
-    return bool(_SCREEN_SUBJECT.search(subject) or b"dmarc" in sender or _FEEDBACK_CT.search(ctype))
+    to = b", ".join(header_values(head.lower(), (b"to",))).decode("latin-1")
+    return any(addr.partition("@")[0].strip() == DMARC_LOCAL
+               for _, addr in getaddresses([to]) if "@" in addr)
 
 
 def _bounded(stream) -> bytes:
@@ -201,7 +196,7 @@ def collect(store: Path, account=None, lo: date | None = None,  # pylint: disabl
         except OSError:
             unparseable += 1
             continue
-        if not may_be_report(head):
+        if not sent_to_dmarc(head):
             continue
         candidates += 1
         src = str(path)
@@ -290,12 +285,12 @@ def _sender(rec: dict) -> str:
     return "(unnamed)"
 
 
-def threats(reports: list[dict], today: date, recent_days: int) -> list[dict]:
+def failed_sources(reports: list[dict], today: date, recent_days: int) -> list[dict]:
     """One row per (domain, source IP) that failed DMARC, worst first.
 
     A source that also passed for the same domain is a legitimate sender failing some of the
     time (forwarding, a mailing list, a key rotation): low. One that never passed is a stranger
-    using the domain: high when a receiver delivered its mail, medium when every message was
+    using the domain: high when a receiver delivered its mail, blocked when every message was
     quarantined or rejected.
     """
     passing = {(r["domain"], rec["source_ip"]) for r in reports for rec in r["records"] if rec["dmarc"] == "pass"}
@@ -329,13 +324,36 @@ def threats(reports: list[dict], today: date, recent_days: int) -> list[dict]:
         elif row["delivered"]:
             row["severity"] = "high"
         else:
-            row["severity"] = "medium"
+            row["severity"] = "blocked"
         for key in ("reporters", "senders", "reasons", "header_from"):
             row[key] = sorted(row[key] - {""})
         out.append(row)
-    rank = {"high": 0, "medium": 1, "low": 2}
+    rank = {"high": 0, "blocked": 1, "low": 2}
     out.sort(key=lambda r: (not r["recent"], rank[r["severity"]], _neg_day(r["last"]), -r["messages"]))
     return out
+
+
+def threats(sources: list[dict]) -> list[dict]:
+    """The failed sources the owner can act on: mail a receiver delivered, and the domain's own
+    senders failing. A stranger whose every message was blocked is the policy working: it is
+    counted in the statistics (`blocked`), not here."""
+    return [s for s in sources if s["severity"] != "blocked"]
+
+
+def blocked(sources: list[dict]) -> list[dict]:
+    """Per domain, the strangers whose every message was quarantined or rejected, most first."""
+    table: dict[str, dict] = {}
+    for s in sources:
+        if s["severity"] != "blocked":
+            continue
+        row = table.setdefault(s["domain"], {"domain": s["domain"], "sources": 0, "messages": 0,
+                                             "quarantined": 0, "rejected": 0,
+                                             "first": s["first"], "last": s["last"]})
+        row["sources"] += 1
+        for key in ("messages", "quarantined", "rejected"):
+            row[key] += s[key]
+        row["first"], row["last"] = min(row["first"], s["first"]), max(row["last"], s["last"])
+    return sorted(table.values(), key=lambda r: (-r["messages"], r["domain"]))
 
 
 def _neg_day(day: str) -> int:
@@ -464,6 +482,9 @@ def dmarc(*, store: Path, account=None, domain=None, after=None,  # pylint: disa
     for failure in failures:
         failure["recent"] = (bool(failure["date"])
                              and (today - date.fromisoformat(failure["date"])) <= timedelta(days=days))
+    sources = failed_sources(reports, today, days)
+    stats = statistics(reports)
+    stats["blocked"] = blocked(sources)
     return {
         "today": today.isoformat(),
         "recent_days": days,
@@ -472,16 +493,18 @@ def dmarc(*, store: Path, account=None, domain=None, after=None,  # pylint: disa
         "candidates": found["candidates"],
         "unparseable": found["unparseable"],
         "duplicates": found["duplicates"],
-        "threats": threats(reports, today, days),
+        "threats": threats(sources),
         "failure_reports": failures,
         "holes": holes(reports, today, QUIET_DAYS),
-        "stats": statistics(reports),
+        "stats": stats,
         "other_dmarc_mail": found["others"],
     }
 
 
 def alarming(result: dict) -> bool:
-    """Whether the result holds a recent threat, a recent failure report, or a high hole."""
+    """Whether the result holds a recent delivered threat, a recent failure report, or a high hole.
+
+    A low threat is the domain's own sender failing some of the time: worth reading, not alarming."""
     return (any(t["recent"] and t["severity"] != "low" for t in result["threats"])
             or any(f["recent"] for f in result["failure_reports"])
             or any(h["severity"] == "high" for h in result["holes"]))

@@ -57,7 +57,7 @@ them. A path guessed wrong reads or writes someone else's mail, so a missing one
 4. Do not mark any option "(Recommended)".
 
 **Why:** AskUserQuestion holds four options, so the verbs the owner uses least go under Other.
-`/enine-mail-dmarc` names `dmarc` itself.
+`/qux-mail-dmarc` names `dmarc` itself.
 
 ## Read: search, resolve
 
@@ -82,22 +82,23 @@ matches whole. A flag is its field's query (`--from X` is `from:(X)`), so the fl
 2. Read the whole output before writing anything; it takes about a minute on a large store.
 3. Lead with the verdict: the count of recent threats and high holes, or "nothing recent, no high holes".
 4. Report threats first, recent ones before old, as the output ranks them.
-5. For each threat, give the domain, source IP, messages, delivered or blocked, and last date.
+5. For each threat, give the domain, source IP, messages, delivered, and last date.
 6. Then report every failure report, then every hole with its severity and detail.
-7. Then give the statistics in at most five lines: totals, the busiest domains and reporters.
+7. Then give the statistics in at most five lines: totals, blocked attempts per domain, the busiest domains and reporters.
 8. IF the output lists OTHER DMARC MAIL, THEN name those messages; the verb reads no summary email.
 9. IF a hole is a published policy, THEN say it is as of the report date, not today's DNS.
 10. IF the owner asks to fix a hole, THEN read the live record with `/qux-porkbun-domain` first.
 11. Change nothing yourself: the verb is read-only, and a DNS change is the owner's.
 12. IF the exit code is 2, THEN report the refusal message; do not work around it.
 
-**Why:** a message is screened by its subject, sender and content type, not by the address it came
-to, so a report those headers do not mark is not read. A threat is a sender that failed DMARC while using the domain: "high" when
-a receiver delivered it, "medium" when every message was quarantined or rejected, "low" when
-the same IP also passed (a legitimate sender failing some of the time, such as a forward).
+**Why:** the reports are the messages whose To header names a dmarc@ address, on any domain;
+a report sent to any other address is not read. A threat is a sender that failed DMARC while using the domain and that the owner can act on: "high"
+when a receiver delivered it, "low" when the same IP also passed (a legitimate sender failing some
+of the time, such as a forward). A stranger whose every message was quarantined or rejected is the
+policy working: it is counted as blocked in the statistics, not as a threat.
 A hole whose newest evidence is over 60 days old is not reported, nor is a sender whose newest
 passing mail passed DKIM: a report describes its own day, and the hole may be fixed since.
-Exit 1 means a recent medium or high threat, a recent failure report, or a high hole; exit 0
+Exit 1 means a recent high threat, a recent failure report, or a high hole; exit 0
 means none of these.
 
 ## Write: ingest, pin
@@ -149,7 +150,7 @@ a retry after a crash cannot send it twice; the owner checks for its Bcc copy fi
 ## Exit and files
 
 Exit 0 done, nothing to do, or printed; 1 a dry run with changes pending, nothing matched, an
-id not in the store, an unlocked or dangling pin, or a recent DMARC threat or high hole; 2 refused.
+id not in the store, an unlocked or dangling pin, or a recent delivered DMARC threat or high hole; 2 refused.
 
 - Every path is the consumer's, as the table under "Paths come from the consumer" says.
 - The sender config holds the SES profiles. Never print, echo or paste it.

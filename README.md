@@ -14,7 +14,7 @@ What every harness reads lives under `shared/`; what one harness reads lives und
 | [Forward Email](#forward-email) | Create, update, delete and read Forward Email domains and aliases | `shared/skills/qux-forwardemail/` |
 | [Domain setups](#domain-setups) | One run sets a domain's DNS for Forward Email, Fastmail or a website host | `qux-porkbun-forwardemail/`, `-fastmail/`, `-eninesites/` |
 | [AWS SES](#aws-ses) | Configure an SES identity and print the records it needs | `shared/skills/qux-aws-ses/` |
-| [Mail](#mail) | Search, resolve, file and pin stored mail; draft and send through SES; rank DMARC reports | `shared/skills/qux-mail/`, `shared/skills/enine-mail-dmarc/` |
+| [Mail](#mail) | Search, resolve, file and pin stored mail; draft and send through SES; rank DMARC reports | `shared/skills/qux-mail/`, `shared/skills/qux-mail-dmarc/` |
 | [Hosts and desktops](#hosts-and-desktops) | Create Linux accounts over SSH; size an Omarchy desktop's display | `linux-create-user/`, `omarchy-display-sizing/` |
 | [Commands](#commands) | `/lint` and `/review` | `claude/commands/` |
 
@@ -325,7 +325,7 @@ through SES. It is standard-library Python only.
 | `pin <message-id>...` | locks each stored `.eml` with the macOS immutable flag; `--check` reports unlocked ones, `--unpin` unlocks | with `--apply` |
 | `draft` | builds draft N, the exact bytes SES will send, and shows it; with no arguments, lists drafts and sent mail | a draft only |
 | `send N` | shows draft N as it will go; `send N --apply` sends it through `aws sesv2 send-email` | with `--apply` |
-| `dmarc` | reads every DMARC report in the store and ranks threats, holes and statistics; `/enine-mail-dmarc` runs it | nothing |
+| `dmarc` | reads every DMARC report in the store and ranks threats, holes and statistics; `/qux-mail-dmarc` runs it | nothing |
 
 ### Search
 
@@ -343,21 +343,23 @@ drafted; SES sets the Date.
 
 ### DMARC
 
-`dmarc` picks likely reports by subject, sender and content type, never by the address they
-came to, then reads each for what it holds; a message those headers do not mark is not read.
+`dmarc` reads the messages whose To header names a dmarc@ address, on any domain, for what each
+holds; a report sent to any other address, such as security@, is not read.
 An aggregate report (RFC 7489) is XML, zipped, gzipped or bare, read from its bytes whatever its label says; a
 failure report (RFC 6591) is a multipart/report with a `message/feedback-report` part. A
 report kept in two mailboxes counts once. The output runs threats, failure reports, holes,
-then statistics by domain, reporter, month and sender.
+then statistics: blocked attempts, and counts by domain, reporter, month and sender.
 
-- **Threat**: a source IP that failed DMARC for a domain. `high` when a receiver delivered
-  it, `medium` when every message was quarantined or rejected, `low` when the same IP also
-  passed for the domain. Recent means within `--days` (default 30).
+- **Threat**: a source IP that failed DMARC for a domain and that the owner can act on.
+  `high` when a receiver delivered it, `low` when the same IP also passed for the domain (the
+  domain's own sender failing some of the time). Recent means within `--days` (default 30).
+- **Blocked**: a source that never passed and whose every message was quarantined or rejected.
+  That is the policy working, so it is counted per domain in the statistics, not as a threat.
 - **Hole**: `p=none`, `pct` below 100, `sp=none`, a legitimate sender whose mail passed on SPF
   alone (a forward of it fails), or a domain with no report for 60 days. A policy is as
   published on the last report's date. A hole whose newest evidence is over 60 days old is not
   reported, nor is a sender whose newest passing mail passed DKIM: it may be fixed since.
-- Exit 1 on a recent medium or high threat, a recent failure report, or a high hole.
+- Exit 1 on a recent high threat, a recent failure report, or a high hole.
 
 Each report is untrusted: decompressed size is capped at 50 MB, and an attachment that will
 not open is counted as unparseable without hiding the others in the same message.
