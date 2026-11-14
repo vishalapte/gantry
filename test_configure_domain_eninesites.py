@@ -1,4 +1,4 @@
-"""Tests for shared/skills/enine-porkbun-eninesites. Run: python3 -m unittest test_configure_domain_eninesites
+"""Tests for shared/skills/qux-porkbun-eninesites. Run: python3 -m unittest test_configure_domain_eninesites
 
 Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
 installed. Uses the Porkbun fake from test_configure_domain_email and never touches
@@ -9,7 +9,7 @@ import unittest
 
 from test_configure_domain_email import D, FakeApis, Run, load, porkbun_new_domain
 
-ce = load("enine-porkbun-eninesites", "configure_eninesites.py")
+ce = load("qux-porkbun-eninesites", "configure_eninesites.py")
 
 
 def web(apis, name):

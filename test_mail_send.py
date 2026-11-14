@@ -68,12 +68,11 @@ class SendCase(MailCase):
                 "--body", str(self.body), *extra]
 
     def store_eml(self, message_id, references):
-        stem = send_module.mail_store.local_msgid(send_module.mail_store.message_key(message_id=message_id))
-        folder = self.tmp / "mail" / "acct" / "archive" / "example.net" / "2026-10"
+        raw = (f"From: bob@example.net\r\nTo: desk@example.org\r\nMessage-ID: {message_id}\r\n"
+               f"References: {references}\r\nSubject: hi\r\n\r\nbody\r\n").encode()
+        folder = self.tmp / "mail" / "acct" / "messages" / "2026" / "10"
         folder.mkdir(parents=True)
-        (folder / f"{stem}.eml").write_bytes(
-            (f"From: bob@example.net\r\nTo: desk@example.org\r\nMessage-ID: {message_id}\r\n"
-             f"References: {references}\r\nSubject: hi\r\n\r\nbody\r\n").encode())
+        (folder / f"{send_module.mail_store.message_stem(raw)}.eml").write_bytes(raw)
 
 
 def head_lines(d):
@@ -226,7 +225,7 @@ class DraftVerb(SendCase):
         code, out, err = self.run_cli("draft", *self.message_argv())
         self.assertEqual((code, err), (0, ""))
         self.assertIn("draft 1 (draft)", out)
-        self.assertIn("send it with: python3.14 ~/.claude/skills/enine-mail/mail.py send 1 --apply", out)
+        self.assertIn("send it with: python3.14 ~/.claude/skills/qux-mail/mail.py send 1 --apply", out)
         code, out, _ = self.run_cli("draft", "1")
         self.assertEqual(code, 0)
         self.assertIn("bcc:  owner@example.org", out)

@@ -81,7 +81,7 @@ class Install(unittest.TestCase):
                 self.assertTrue((real / "SKILL.md").is_file())
                 self.assertFalse(real.is_symlink())
                 self.assertEqual(os.readlink(self.claude / "skills" / skill.name), str(real))
-        self.assertTrue((self.claude / "skills" / "enine-mail" / "mail.py").is_file())
+        self.assertTrue((self.claude / "skills" / "qux-mail" / "mail.py").is_file())
 
     def test_git_hooks_reach_claude_through_a_link(self):
         self.install()
@@ -117,7 +117,7 @@ class Install(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in self.home.iterdir()), [])
 
     def test_an_old_real_skill_dir_and_git_hooks_are_saved_then_linked(self):
-        old_skill = self.claude / "skills" / "enine-mail"
+        old_skill = self.claude / "skills" / "qux-mail"
         old_skill.mkdir(parents=True)
         (old_skill / "mail.py").write_text("old")
         (self.claude / "git-hooks").mkdir()
@@ -235,7 +235,7 @@ class Install(unittest.TestCase):
     def test_a_pycache_directory_is_not_installed(self):
         repo = self.home / "repo"
         shutil.copytree(ROOT, repo, ignore=shutil.ignore_patterns(".git", "__pycache__"))
-        cache = repo / "shared" / "skills" / "enine-mail" / "__pycache__"
+        cache = repo / "shared" / "skills" / "qux-mail" / "__pycache__"
         cache.mkdir()
         (cache / "mail.cpython.pyc").write_text("")
         result = self.run_install("--agent", "alice", "--dry-run", root=repo)

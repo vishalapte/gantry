@@ -1,4 +1,4 @@
-"""Tests for shared/skills/enine-porkbun. Run: python3 -m unittest test_porkbun
+"""Tests for shared/skills/qux-porkbun. Run: python3 -m unittest test_porkbun
 
 Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
 installed. Uses the Porkbun fake from test_configure_domain_email, plus the account's
@@ -12,7 +12,7 @@ from unittest import mock
 
 from test_configure_domain_email import D, FakeApis, Run, load, pc, porkbun_new_domain
 
-pb = load("enine-porkbun", "porkbun.py")
+pb = load("qux-porkbun", "porkbun.py")
 
 
 class Account(FakeApis):

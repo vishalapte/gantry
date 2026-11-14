@@ -1,4 +1,4 @@
-"""Tests for shared/skills/enine-porkbun-forwardemail. Run: python3 -m unittest test_configure_domain_email
+"""Tests for shared/skills/qux-porkbun-forwardemail. Run: python3 -m unittest test_configure_domain_email
 
 Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
 installed.
@@ -33,7 +33,7 @@ def load(name, filename):
     return module
 
 
-fp = load("enine-porkbun-forwardemail", "fe_porkbun.py")
+fp = load("qux-porkbun-forwardemail", "fe_porkbun.py")
 pc = sys.modules["porkbun_client"]  # the Porkbun client fe_porkbun imports: one http for both APIs
 D = "example.com"
 DKIM = "v=DKIM1; k=rsa; p=" + "A" * 392 + ";"

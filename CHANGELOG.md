@@ -5,6 +5,22 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+## 0.22.0 - 2026-11-14
+
+### Changed
+- **qux-mail reads and files wicket's `messages/` layout** (ADR-MAIL, 2026-11-14):
+  `<account>/messages/YYYY/MM/<stem>.eml`, where the stem hashes Message-ID, Date and From the
+  same way wicket does, so a tracked and a harvested copy are one file. search, resolve, pin,
+  ingest and dmarc read it; ingest files there, read-only, and never over an existing file.
+  An account still on `archive/` is refused with "run `wicket migrate` first".
+- **The `enine-` skills are `qux-` skills**: `qux-mail`, `qux-aws-ses`, `qux-forwardemail`,
+  `qux-porkbun` and its eight `qux-porkbun-*` verbs, under a prefix whose domain the owner holds
+  (qux.dev). `./install` leaves the old `enine-*` directories in `~/.claude/skills/` and
+  `~/.agents/skills/`.
+- **A dot-dir in the store is not an account.** wicket's `.backup-*`, `.deleted-*` and
+  `.duplicates*` folders and `.git` are never searched, resolved into or refused, as wicket
+  itself skips them.
+
 ## 0.21.1 - 2026-11-10
 
 ### Fixed

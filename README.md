@@ -10,11 +10,11 @@ What every harness reads lives under `shared/`; what one harness reads lives und
 | Area | What it does | Where |
 |---|---|---|
 | [Settings and guardrails](#settings-and-guardrails) | Permissions, git hooks that refuse unsafe pushes and commits, auto-approval of safe compound commands | `shared/permissions.json`, `shared/git-hooks/`, `shared/hooks/`, `claude/settings.json` |
-| [Porkbun](#porkbun) | Create, update, delete and read DNS records; capture, undo and preflight a zone | `shared/skills/enine-porkbun*/` |
-| [Forward Email](#forward-email) | Create, update, delete and read Forward Email domains and aliases | `shared/skills/enine-forwardemail/` |
-| [Domain setups](#domain-setups) | One run sets a domain's DNS for Forward Email, Fastmail or a website host | `enine-porkbun-forwardemail/`, `-fastmail/`, `-eninesites/` |
-| [AWS SES](#aws-ses) | Configure an SES identity and print the records it needs | `shared/skills/enine-aws-ses/` |
-| [Mail](#mail) | Search, resolve, file and pin stored mail; draft and send through SES; rank DMARC reports | `shared/skills/enine-mail/`, `shared/skills/enine-mail-dmarc/` |
+| [Porkbun](#porkbun) | Create, update, delete and read DNS records; capture, undo and preflight a zone | `shared/skills/qux-porkbun*/` |
+| [Forward Email](#forward-email) | Create, update, delete and read Forward Email domains and aliases | `shared/skills/qux-forwardemail/` |
+| [Domain setups](#domain-setups) | One run sets a domain's DNS for Forward Email, Fastmail or a website host | `qux-porkbun-forwardemail/`, `-fastmail/`, `-eninesites/` |
+| [AWS SES](#aws-ses) | Configure an SES identity and print the records it needs | `shared/skills/qux-aws-ses/` |
+| [Mail](#mail) | Search, resolve, file and pin stored mail; draft and send through SES; rank DMARC reports | `shared/skills/qux-mail/`, `shared/skills/enine-mail-dmarc/` |
 | [Hosts and desktops](#hosts-and-desktops) | Create Linux accounts over SSH; size an Omarchy desktop's display | `linux-create-user/`, `omarchy-display-sizing/` |
 | [Commands](#commands) | `/lint` and `/review` | `claude/commands/` |
 
@@ -153,9 +153,9 @@ shift+tab.
 
 ## Porkbun
 
-`/enine-porkbun` drives one script, `skills/enine-porkbun/porkbun.py`. With no arguments it
-prints its help. `/enine-porkbun-create`, `-update`, `-delete`, `-list` and `-domain` are the
-same skill with the verb fixed; all follow `skills/enine-porkbun/PROCEDURE.md`.
+`/qux-porkbun` drives one script, `skills/qux-porkbun/porkbun.py`. With no arguments it
+prints its help. `/qux-porkbun-create`, `-update`, `-delete`, `-list` and `-domain` are the
+same skill with the verb fixed; all follow `skills/qux-porkbun/PROCEDURE.md`.
 
 ### Verbs
 
@@ -200,7 +200,7 @@ same skill with the verb fixed; all follow `skills/enine-porkbun/PROCEDURE.md`.
     chmod 600 ~/.config/porkbun/credentials
 
 Every skill that writes Porkbun records reads these files: the ones above, the domain setups
-and `enine-aws-ses`'s printed commands. Porkbun also needs API access turned on for each
+and `qux-aws-ses`'s printed commands. Porkbun also needs API access turned on for each
 domain (porkbun.com > Domain Management); a run without it says so and names the domain.
 
 ### Sandbox
@@ -211,8 +211,8 @@ change a real zone.
 
 ## Forward Email
 
-`/enine-forwardemail` (`forwardemail.py`) changes a domain's settings and its aliases at
-[Forward Email](https://forwardemail.net). It sets no DNS; `/enine-porkbun-forwardemail`
+`/qux-forwardemail` (`forwardemail.py`) changes a domain's settings and its aliases at
+[Forward Email](https://forwardemail.net). It sets no DNS; `/qux-porkbun-forwardemail`
 (below) does that.
 
 ### Verbs
@@ -234,8 +234,8 @@ does not return, such as an alias's description, is sent and named in the row as
 
 `~/.config/forwardemail/credentials`, mode 600, holding `FORWARDEMAIL_API_KEY=...`, the API
 token from your Forward Email account. The client, `forwardemail_client.py`, is the one the
-domain setup below uses too, so installing `enine-porkbun-forwardemail` needs this folder and
-`enine-porkbun` beside it.
+domain setup below uses too, so installing `qux-porkbun-forwardemail` needs this folder and
+`qux-porkbun` beside it.
 
 ## Domain setups
 
@@ -245,7 +245,7 @@ through the same Porkbun client, with the same dry run and guarantees. All three
 
 ### Forward Email
 
-`/enine-porkbun-forwardemail` (`fe_porkbun.py <domain>`) adds the domain to Forward Email and
+`/qux-porkbun-forwardemail` (`fe_porkbun.py <domain>`) adds the domain to Forward Email and
 holds its DNS to the records in Forward Email's own zone file: MX, SPF (merged), DKIM, return
 path, DMARC, verification and autodiscovery. Another mail host's MX is kept and shown as a
 `CONFLICT`; `--force` replaces it. It ends with Forward Email's own verification.
@@ -254,7 +254,7 @@ path, DMARC, verification and autodiscovery. Another mail host's MX is kept and 
 
 ### Fastmail
 
-`/enine-porkbun-fastmail` (`fm_porkbun.py <domain>`) sets Fastmail's three DKIM CNAMEs and its
+`/qux-porkbun-fastmail` (`fm_porkbun.py <domain>`) sets Fastmail's three DKIM CNAMEs and its
 include in the SPF record, so Fastmail can send as the domain; `--mx` also moves the apex MX
 to Fastmail. It prints the steps left at Fastmail.
 
@@ -262,14 +262,14 @@ to Fastmail. It prints the steps left at Fastmail.
 
 ### eninesites
 
-`/enine-porkbun-eninesites` (`configure_eninesites.py <domain>`) points the domain and `www`
+`/qux-porkbun-eninesites` (`configure_eninesites.py <domain>`) points the domain and `www`
 at `eninesites.com` with `ALIAS` records, or at the host `--to` names.
 
 **Credentials:** Porkbun only.
 
 ## AWS SES
 
-`/enine-aws-ses` (`skills/enine-aws-ses/ses_identity.py <domain>`) sets a domain up to send
+`/qux-aws-ses` (`skills/qux-aws-ses/ses_identity.py <domain>`) sets a domain up to send
 through SES, or confirms that it already is.
 
 ### What it sets
@@ -312,7 +312,7 @@ is always read, so the Porkbun credentials are required.
 
 ## Mail
 
-`/enine-mail` drives `skills/enine-mail/mail.py`, which works a mail store on disk and sends
+`/qux-mail` drives `skills/qux-mail/mail.py`, which works a mail store on disk and sends
 through SES. It is standard-library Python only.
 
 ### Verbs
@@ -372,7 +372,7 @@ refuses and names both.
 |---|---|---|---|
 | `ENINE_MAIL_STORE` | `--store DIR` | the mail store | `search`, `resolve`, `ingest`, `pin`, `dmarc`; a reply's threading |
 | `ENINE_MAIL_IDENTITY` | `--identity FILE` | the owner-address file | `ingest`, to tell sent mail from received |
-| `ENINE_MAIL_SENDERS` | `--senders FILE` | the sender config | `draft` and `send` with message arguments; `enine-aws-ses` |
+| `ENINE_MAIL_SENDERS` | `--senders FILE` | the sender config | `draft` and `send` with message arguments; `qux-aws-ses` |
 | `ENINE_MAIL_DRAFTS` | `--drafts DIR` | the drafts folder | `draft`, `send` |
 | `ENINE_MAIL_SENT` | `--sent FILE` | the sent log, one JSON line per send | listing drafts, `send N --apply`; a reply's threading |
 
@@ -389,11 +389,15 @@ refuses and names both.
 
 ### The store
 
-    <store>/<account>/archive/<counterparty-domain>/<YYYY-MM>/<hash>.eml
+    <store>/<account>/messages/<YYYY>/<MM>/<stem>.eml
     <store>/<account>/manifest/<YYYY>.jsonl        optional, one JSON line per message
 
-When an account has a manifest, keyed by Message-ID, `resolve`, `pin` and subject searches
-answer from it instead of opening every file.
+One file per message, never moved, and no folders (wicket's ADR-MAIL, 2026-11-14). The stem
+is `sha1(Message-ID, Date in UTC, From)[:16]`, so every copy of one message in an account
+lands on one path; `YYYY/MM` is its `Date:` header, else its topmost `Received:`, else the
+time the source file was written (wicket uses the provider's arrival time there). When an
+account has a manifest, keyed by Message-ID, `resolve`, `pin` and subject searches answer
+from it (its rows name each file by `stem`) instead of opening every file.
 
 ### The owner-address file
 
@@ -413,7 +417,7 @@ TOML, one entry per domain you send from. A setting missing from the entry comes
 
     [domains."example.com"]
     profile = "ses-example"        # the AWS profile that sends
-    mail_from = "hermes"           # read by enine-aws-ses
+    mail_from = "hermes"           # read by qux-aws-ses
     reply_to = "alice@{domain}"
 
 A domain not listed, or marked `deprecated = true`, is refused.
@@ -426,7 +430,7 @@ send email through SES in the domain's account. Nothing else in the skill needs 
 
 ### As a library
 
-`skills/enine-mail/mail_eml.py` reads `.eml` files for other programs: `decode_hdr`,
+`skills/qux-mail/mail_eml.py` reads `.eml` files for other programs: `decode_hdr`,
 `msg_date`, `html_to_text`, `body_text`, `account_dirs` and `get_body(msg, type="text")`,
 which returns a message's body as plain text, as HTML with `type="html"`, or every text part
 as a JSON list with `type="json"` (`{"type", "content", "attachment", "filename", "depth"}`,

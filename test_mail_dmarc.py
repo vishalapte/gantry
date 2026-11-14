@@ -1,4 +1,4 @@
-"""Tests for shared/skills/enine-mail's dmarc verb: finding DMARC reports by content,
+"""Tests for shared/skills/qux-mail's dmarc verb: finding DMARC reports by content,
 reading them, and ranking threats, holes and statistics.
 Run: python3 -m unittest test_mail_dmarc
 
@@ -14,7 +14,7 @@ from datetime import date, datetime, timedelta, timezone
 from email.message import EmailMessage
 from unittest import mock
 
-from test_mail import MailCase
+from test_mail import MailCase, store
 
 dmarc = sys.modules["mail_dmarc"]
 
@@ -80,10 +80,14 @@ def failure_report(feedback_type="auth-failure"):
 
 
 class DmarcCase(MailCase):
-    def put(self, raw, *, account="dmarc@example.org", name="a", month="2026-11"):
-        folder = self.root / account / "archive" / "rcv.example" / month
+    def put(self, raw, *, account="dmarc@example.org", name="a", month="2026/11"):
+        """Store a report as ingest would: given a Message-ID `<name@rcv.example>`, as a stored
+        message carries, filed under messages/<month>/ by the stem of its bytes."""
+        eol = b"\r\n" if b"\r\n" in raw else b"\n"
+        raw = b"Message-ID: <" + name.encode() + b"@rcv.example>" + eol + raw
+        folder = self.root / account / "messages" / month
         folder.mkdir(parents=True, exist_ok=True)
-        (folder / f"{name}.eml").write_bytes(raw)
+        (folder / f"{store.message_stem(raw)}.eml").write_bytes(raw)
 
     def scan(self, **kwargs):
         return dmarc.dmarc(store=self.root, today=kwargs.pop("today", TODAY), **kwargs)
@@ -184,7 +188,7 @@ class Ranking(DmarcCase):
         self.root.mkdir()
 
     def add(self, name, **kwargs):
-        month = kwargs.get("day", TODAY).strftime("%Y-%m")  # the archive files a report by when it came
+        month = kwargs.get("day", TODAY).strftime("%Y/%m")  # the store files a report by when it came
         self.put(message(f"Report Domain: {kwargs.get('domain', D)}",
                          attach=gzip.compress(report_xml(rid=name, **kwargs))), name=name, month=month)
 

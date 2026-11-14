@@ -1,4 +1,4 @@
-"""Tests for shared/skills/enine-aws-ses. Run: python3 -m unittest test_aws_ses
+"""Tests for shared/skills/qux-aws-ses. Run: python3 -m unittest test_aws_ses
 
 Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
 installed. Replaces the script's one `aws()` call with a fake SES, reads the zone from
@@ -19,7 +19,7 @@ from pathlib import Path
 from test_configure_domain_email import load
 from test_porkbun import Account, Porkbun
 
-ses = load("enine-aws-ses", "ses_identity.py")
+ses = load("qux-aws-ses", "ses_identity.py")
 
 D = "example.com"
 TOKENS = ["a" * 32, "b" * 32, "c" * 32]

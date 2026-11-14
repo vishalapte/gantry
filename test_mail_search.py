@@ -24,7 +24,7 @@ FILING = "Tax filing for ACME42"
 
 
 def write(root, name, *, sender, subject, when, to=f"Owner <{OWNER}>", cc=None, bcc=None, body="hello",
-          attach=None, month="2026-08", domain="example.org"):
+          attach=None, month="2026/08"):
     msg = EmailMessage()
     msg["From"] = sender
     msg["To"] = to
@@ -37,7 +37,7 @@ def write(root, name, *, sender, subject, when, to=f"Owner <{OWNER}>", cc=None, 
     msg.set_content(body)
     if attach:
         msg.add_attachment(b"%PDF-1.4", maintype="application", subtype="pdf", filename=attach)
-    path = root / OWNER / "archive" / domain / month / f"{name}.eml"
+    path = root / OWNER / "messages" / month / f"{name}.eml"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(msg.as_bytes())
     return path
@@ -48,10 +48,9 @@ class SearchCase(MailCase):
         super().setUp()
         self.root = self.tmp / "mail"
         write(self.root, "alice", sender="Alice Archer <alice@alpha.example.com>", subject=DUES,
-              when="Mon, 10 Aug 2026 10:00:00 +0530", domain="alpha.example.com", attach="invoice.pdf")
+              when="Mon, 10 Aug 2026 10:00:00 +0530", attach="invoice.pdf")
         write(self.root, "bob", sender="Bob Baker <bob@beta.example.net>", subject=FILING,
-              when="Tue, 11 Aug 2026 10:00:00 +0530", cc="Carol Cole <carol@example.net>",
-              domain="beta.example.net")
+              when="Tue, 11 Aug 2026 10:00:00 +0530", cc="Carol Cole <carol@example.net>")
         write(self.root, "pnl", sender="Accounts <accounts@example.org>", subject="Profit and Loss statement",
               when="Wed, 12 Aug 2026 10:00:00 +0530", body="Total debited INR 5900.00 on your card")
         write(self.root, "split", sender="Accounts <accounts@example.org>", subject="Profit statement, Loss carried",
@@ -174,7 +173,7 @@ class Dates(MailCase):
     def test_ist_date_boundary_across_a_month_edge(self):
         """20:00 UTC on 31 July is 1 August in IST, and it is filed in the July folder."""
         write(self.tmp / "mail", "edge", sender="a@example.org", subject="edge",
-              when="Fri, 31 Jul 2026 20:00:00 +0000", month="2026-07")
+              when="Fri, 31 Jul 2026 20:00:00 +0000", month="2026/07")
         subjects = lambda **kw: [row["subject"] for row in self.search(**kw)["rows"]]  # noqa: E731
         self.assertEqual(subjects(after="2026-08-01"), ["edge"])
         self.assertEqual(subjects(before="2026/08/01"), [])
@@ -190,15 +189,15 @@ class Dates(MailCase):
 class Walk(SearchCase):
     def test_months_outside_the_widened_range_are_not_opened(self):
         write(self.root, "old", sender="a@example.org", subject="old", when="Mon, 05 Jan 2026 10:00:00 +0530",
-              month="2026-01")
+              month="2026/01")
         everything = self.search(subject="o")
         pruned = self.search(subject="o", after="2026-08-01")
         self.assertEqual(pruned["scanned"], everything["scanned"] - 1)
 
     def test_rfc2047_headers_are_decoded(self):
         name, subject = "Ålice Ändersson", "Rechnung für Juli"
-        path = self.root / OWNER / "archive" / "example.de" / "2026-08" / "x.eml"
-        path.parent.mkdir(parents=True)
+        path = self.root / OWNER / "messages" / "2026" / "08" / "x.eml"
+        path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes((f"From: {Header(name, 'utf-8').encode()} <ae@example.de>\r\nTo: {OWNER}\r\n"
                           f"Subject: {Header(subject, 'utf-8').encode()}\r\n"
                           "Date: Mon, 10 Aug 2026 10:00:00 +0200\r\n\r\nbody\r\n").encode())
@@ -207,7 +206,7 @@ class Walk(SearchCase):
         self.assertEqual(result["rows"][0]["from"], f"{name} <ae@example.de>")
 
     def test_unparseable_file_is_counted_and_skipped(self):
-        bad = self.root / OWNER / "archive" / "example.org" / "2026-08" / "bad.eml"
+        bad = self.root / OWNER / "messages" / "2026" / "08" / "bad.eml"
         bad.write_bytes(b"")
         result = self.search(subject="o")
         self.assertEqual(result["unparseable"], 1)
@@ -318,7 +317,7 @@ class AttachmentPrefilter(MailCase):
 
     def setUp(self):
         super().setUp()
-        self.folder = self.tmp / "mail" / OWNER / "archive" / "example.org" / "2026-08"
+        self.folder = self.tmp / "mail" / OWNER / "messages" / "2026" / "08"
         self.folder.mkdir(parents=True)
         self.paths = {}
         for case, (headers, _) in ATTACHED.items():
@@ -441,8 +440,7 @@ class SearchManifest(MailCase):
             if row_subject is not None:
                 rows.append({"id": f"{name}@mail.example.org", "subject": row_subject,
                              "from": sender.split("<")[1].rstrip(">"), "to": [OWNER],
-                             "date": "2026-08-10T04:30:00+00:00", "downloaded": True,
-                             "path": path.relative_to(self.tmp / "mail" / OWNER / "archive").as_posix()})
+                             "date": "2026-08-10T04:30:00+00:00", "downloaded": True, "stem": path.stem})
         self.shard = write_manifest(self.tmp / "mail" / OWNER, rows)
         self.read = []
         real = search_module.read_headers

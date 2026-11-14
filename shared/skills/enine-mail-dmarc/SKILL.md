@@ -14,8 +14,8 @@ description: >
 
 The verb is `dmarc`. It takes `--domain`, `--after`, `--before` and `--days`, all optional.
 
-1. Read `~/.claude/skills/enine-mail/SKILL.md` and follow its "Read: dmarc" section.
+1. Read `~/.claude/skills/qux-mail/SKILL.md` and follow its "Read: dmarc" section.
 2. Pass only the flags the prompt names.
 
-**Why:** the procedure, the script and the help have one home, in `../enine-mail/`. This skill
+**Why:** the procedure, the script and the help have one home, in `../qux-mail/`. This skill
 fixes the verb, so the verb question is not asked.

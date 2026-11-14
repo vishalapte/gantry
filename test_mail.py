@@ -1,4 +1,4 @@
-"""Tests for shared/skills/enine-mail: the store, ingest, resolve, pin and the command line.
+"""Tests for shared/skills/qux-mail: the store, ingest, resolve, pin and the command line.
 Run: python3 -m unittest test_mail test_mail_search test_mail_send test_mail_dmarc
 
 Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
@@ -11,7 +11,6 @@ environment had. Every address, name and message-id here is made up.
 import contextlib
 import email
 import email.policy
-import hashlib
 import io
 import json
 import os
@@ -25,7 +24,7 @@ from unittest import mock
 
 from test_configure_domain_email import load
 
-mail = load("enine-mail", "mail.py")
+mail = load("qux-mail", "mail.py")
 store = sys.modules["mail_store"]
 search_module = sys.modules["mail_search"]
 send_module = sys.modules["mail_send"]
@@ -34,7 +33,6 @@ MODULES = (mail, store, search_module, send_module, sys.modules["mail_eml"], pat
 
 OWNER = "owner@example.com"
 MSGID = "test-0001@mail.example.com"
-STEM = "b42413bb525fddda"  # sha1(MSGID)[:16]: wicket's archive name for it
 
 
 class MailCase(unittest.TestCase):
@@ -101,6 +99,21 @@ def parsed(raw):
     return email.message_from_bytes(raw, policy=default_policy)
 
 
+# Where ingest files eml(OWNER, "bob@example.org"): the owner's account (outbound), the month of its
+# Date header in UTC (09:56 -0400 on 8 July 2026 is 13:56Z, July), and the file named by its stem.
+OUTBOUND_RELPATH = f"{OWNER}/messages/2026/07/{store.message_stem(eml(OWNER, 'bob@example.org'))}.eml"
+
+
+def store_walks(glob):
+    """How many store-wide walks (resolve's Message-ID scan) a patched Path.glob recorded."""
+    return sum(1 for call in glob.call_args_list if call.args[1] == store.MESSAGES_GLOB)
+
+
+def counting_glob():
+    """Path.glob, patched to record each call and still glob."""
+    return mock.patch.object(Path, "glob", autospec=True, side_effect=Path.glob)
+
+
 class Isolation(MailCase):
     def test_no_module_holds_a_path_of_its_own(self):
         for module in MODULES:
@@ -156,7 +169,7 @@ class PathsFromTheConsumer(MailCase):
             src.write_bytes(eml(OWNER, "bob@example.org"))
             code, out, _ = self.run_cli("ingest", str(src), "--store", str(self.root), "--identity", str(self.identity))
             self.assertEqual(code, 1)
-            self.assertIn(f"{OWNER}/archive/example.org/", out)  # the identity file made it outbound
+            self.assertIn(OUTBOUND_RELPATH, out)  # the identity file made it outbound
 
     def test_a_flag_beats_its_variable(self):
         wrong = self.tmp / "wrong-store"
@@ -213,26 +226,6 @@ class Store(MailCase):
         self.assertIsNone(store.normalize_message_id("  "))
         self.assertIsNone(store.normalize_message_id(None))
 
-    def test_local_msgid_is_wicket_parity_sha1_16(self):
-        key = store.message_key(message_id=f"<{MSGID}>")
-        self.assertEqual(key, MSGID)
-        self.assertEqual(store.local_msgid(key), hashlib.sha1(MSGID.encode()).hexdigest()[:16])
-        self.assertEqual(store.local_msgid(key), STEM)
-
-    def test_message_key_falls_back_to_provider_native(self):
-        self.assertEqual(store.message_key(message_id=None, provider="delphi", native_id="deadbeef"),
-                         "delphi:deadbeef")
-
-    def test_counterparty_outbound_uses_single_external_recipient(self):
-        self.assertEqual(store.counterparty_domain(parsed(eml(OWNER, "bob@example.org")), self.owners()), "example.org")
-
-    def test_counterparty_inbound_uses_sender_domain(self):
-        self.assertEqual(store.counterparty_domain(parsed(eml("bob@example.org", OWNER)), self.owners()), "example.org")
-
-    def test_counterparty_unfiled_when_ambiguous(self):
-        msg = parsed(eml(OWNER, "alice@example.net, bob@example.org"))
-        self.assertEqual(store.counterparty_domain(msg, self.owners()), store.UNFILED)
-
     def test_account_outbound_is_owner_from_not_counterparty(self):
         self.assertEqual(store.account_of(parsed(eml(OWNER, "bob@example.org")), self.owners()), OWNER)
 
@@ -250,13 +243,148 @@ class Store(MailCase):
     def test_no_identity_file_reads_as_no_owner(self):
         absent = self.tmp / "absent.json"
         self.assertEqual(store.owner_addresses(absent), frozenset())
-        # With no owner known, outbound mail files under the sender's own domain.
-        owners = store.owner_addresses(absent)
-        self.assertEqual(store.counterparty_domain(parsed(eml(OWNER, "bob@example.org")), owners), "example.com")
+
+
+# wicket's checkout: WICKET_SRC, else the owner's standard clone. Read only by StemParity.
+WICKET_SRC = Path(os.environ.get("WICKET_SRC") or Path.home() / "dev" / "personal" / "wicket" / "src")
+
+# Messages that exercise every input of the stem and the month: an offset Date, a missing and an
+# unreadable Date (with and without Received), no Message-ID, no From, an id parsed short by
+# policy.default, a non-ASCII id, folded headers, a display name, and CRLF line ends.
+PARITY_CASES = [
+    b"Message-ID: <a@x>\nFrom: Them <Them@Acme.com>\nDate: Mon, 06 Jul 2026 14:30:00 +0530\n\nb\n",
+    b"Message-ID: <a@x>\nFrom: them@acme.com\n\nb\n",
+    b"Message-ID: <a@x>\nFrom: them@acme.com\nDate: +0530\nReceived: from a by b; Tue, 30 Jun 2026 23:59:00 -0400\n\nb\n",
+    b"From: them@acme.com\nDate: Mon, 06 Jul 2026 09:00:00 +0000\n\nb\n",
+    b"Message-ID: <a@x>\nDate: Mon, 06 Jul 2026 09:00:00 +0000\n\nb\n",
+    b"Message-ID: <urn:correios:msg:1@amazon.com>\nFrom: a@b.com\nDate: Fri, 01 Mar 2024 09:00:00 GMT\n\nb\n",
+    "Message-ID: <caf\u00e9@x>\nFrom: a@b.com\nDate: Fri, 01 Mar 2024 09:00:00 +0000\n\nb\n".encode(),
+    b"Message-ID:\r\n <Folded@X>\r\nFrom: \"Last, First\"\r\n <First.Last@Example.org>\r\n"
+    b"Date: Sun, 31 Dec 2023 23:30:00 -0100\r\n\r\nb\r\n",
+    b"Subject: nothing else\n\nb\n",
+    b"Message-ID: <far@x>\nFrom: a@b.com\nDate: Fri, 31 Dec 9999 23:00:00 -0100\n\nb\n",
+]
+
+
+class StemParity(unittest.TestCase):
+    """mail_store's stem and month are wicket.message's, case for case (ADR-MAIL, 2026-11-14).
+
+    The two repos import nothing from each other, so the rule has two copies; this test holds
+    them equal. It loads wicket from its checkout at test time only, and skips, saying why, when
+    that checkout is absent or predates the rule.
+    """
+
+    def wicket_message(self):
+        if not (WICKET_SRC / "wicket" / "message.py").exists():
+            self.skipTest(f"no wicket checkout at {WICKET_SRC}; set WICKET_SRC")
+        sys.path.insert(0, str(WICKET_SRC))
+        try:
+            import wicket.message as wicket_message  # pylint: disable=import-outside-toplevel
+        finally:
+            sys.path.remove(str(WICKET_SRC))
+        if not hasattr(wicket_message, "message_stem"):
+            self.skipTest(f"the wicket checkout at {WICKET_SRC} predates message_stem")
+        return wicket_message
+
+    def test_the_stem_and_month_match_wickets_on_every_case(self):
+        from datetime import datetime, timezone  # pylint: disable=import-outside-toplevel
+
+        theirs = self.wicket_message()
+        fallback = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        for raw in PARITY_CASES:
+            with self.subTest(raw=raw[:40]):
+                self.assertEqual(store.message_stem(raw), theirs.message_stem(raw))
+                self.assertEqual(store.message_date(raw, fallback), theirs.message_date(raw, fallback))
+
+
+class LayoutGuards(MailCase):
+    """The new layout's guarantees: an unmigrated store is refused, each account keeps its own
+    copy, a held copy whose Subject differs is reported, a link is never filed, and a filed
+    file is read-only and never written over."""
+
+    def test_an_account_still_on_archive_is_refused_by_ingest_resolve_and_search(self):
+        (self.root / OWNER / "archive").mkdir(parents=True)
+        src = self.tmp / "m.eml"
+        src.write_bytes(eml(OWNER, "bob@example.org"))
+        with self.assertRaisesRegex(store.Refusal, "run `wicket migrate` first"):
+            store.ingest(src, store=self.root, identity=self.identity, dry_run=True)
+        with self.assertRaisesRegex(store.Refusal, "run `wicket migrate` first"):
+            store.resolve(MSGID, self.root)
+        code, _, err = self.run_cli("search", "--subject", "x")
+        self.assertEqual(code, 2)
+        self.assertIn("run `wicket migrate` first", err)
+        self.assertTrue(src.exists())
+
+    def test_a_dot_dir_is_not_an_account(self):
+        """wicket's backups sit beside the accounts: one still on archive/ refuses nothing, and
+        one holding messages/ and a manifest is never searched or resolved into."""
+        (self.root / ".backup-old" / "archive").mkdir(parents=True)
+        backup = self.root / ".backup-new"
+        held = backup / "messages" / "2026" / "07" / "18f2aa00bb11cc22.eml"
+        held.parent.mkdir(parents=True)
+        held.write_bytes(eml(OWNER, "bob@example.org"))
+        (backup / "manifest").mkdir()
+        (backup / "manifest" / "2026.jsonl").write_text(
+            json.dumps({"id": MSGID, "stem": held.stem, "downloaded": True}) + "\n")
+        self.assertIsNone(store.resolve(MSGID, self.root))
+        self.assertEqual(store.manifest_stores(self.root), [])
+        own = self.root / OUTBOUND_RELPATH
+        own.parent.mkdir(parents=True)
+        own.write_bytes(eml(OWNER, "bob@example.org"))
+        self.assertEqual(store.resolve(MSGID, self.root), own)
+        code, out, err = self.run_cli("search", "--subject", "hi")
+        self.assertEqual(code, 0, err)
+        self.assertIn(str(own), out)
+        self.assertNotIn(".backup", out)
+
+    def test_another_accounts_copy_does_not_count(self):
+        other = self.root / "other@example.net"
+        held = other / "messages" / "2026" / "07" / "18f2aa00bb11cc22.eml"
+        held.parent.mkdir(parents=True)
+        held.write_bytes(eml(OWNER, "bob@example.org"))
+        (other / "manifest").mkdir()
+        (other / "manifest" / "2026.jsonl").write_text(
+            json.dumps({"id": MSGID, "stem": held.stem, "downloaded": True}) + "\n")
+        src = self.tmp / "m.eml"
+        src.write_bytes(eml(OWNER, "bob@example.org"))
+        info = store.ingest(src, store=self.root, identity=self.identity)
+        self.assertEqual(info["action"], "filed")
+        self.assertTrue(info["path"].startswith(str(self.root / OWNER / "messages")))
+
+    def test_a_held_copy_whose_subject_differs_is_reported_and_its_source_kept(self):
+        raw = eml(OWNER, "bob@example.org")
+        rewritten = raw.replace(b"Subject: ", b"Subject: [CATCH-ALL] ", 1)
+        self.assertEqual(store.message_stem(raw), store.message_stem(rewritten))
+        held = self.root / OUTBOUND_RELPATH
+        held.parent.mkdir(parents=True)
+        held.write_bytes(raw)
+        src = self.tmp / "m.eml"
+        src.write_bytes(rewritten)
+        info = store.ingest(src, store=self.root, identity=self.identity)
+        self.assertEqual(info["action"], "exists")
+        self.assertIn("[CATCH-ALL]", info["subject_differs"]["this"])
+        self.assertTrue(src.exists())
+        self.assertEqual(held.read_bytes(), raw)
+
+    def test_a_link_is_skipped_not_filed(self):
+        target = self.tmp / "real.eml"
+        target.write_bytes(eml(OWNER, "bob@example.org"))
+        link = self.tmp / "link.eml"
+        link.symlink_to(target)
+        code, _, err = self.run_cli("ingest", str(link), "--apply")
+        self.assertEqual(code, 1)
+        self.assertIn("skip (a link)", err)
+        self.assertFalse((self.root / OUTBOUND_RELPATH).exists())
+
+    def test_a_filed_message_is_read_only(self):
+        src = self.tmp / "m.eml"
+        src.write_bytes(eml(OWNER, "bob@example.org"))
+        info = store.ingest(src, store=self.root, identity=self.identity)
+        self.assertEqual(os.stat(info["path"]).st_mode & 0o777, 0o444)
 
 
 class Ingest(MailCase):
-    RELPATH = f"{OWNER}/archive/example.org/2026-07/{STEM}.eml"
+    RELPATH = OUTBOUND_RELPATH
 
     def source(self, name="msg.eml"):
         src = self.tmp / name
@@ -293,17 +421,17 @@ class Ingest(MailCase):
         self.assertEqual((self.tmp / "mail" / self.RELPATH).read_bytes(), src.read_bytes())
 
     def test_a_message_wicket_already_stored_is_exists_and_nothing_is_written(self):
-        folder = self.tmp / "mail" / OWNER / "archive" / "example.org" / "2026-07"
+        # wicket's copy, under a stem the manifest records rather than the one ingest computes.
+        folder = self.tmp / "mail" / OWNER / "messages" / "2026" / "07"
         folder.mkdir(parents=True)
         harvested = folder / "18f2aa00bb11cc22.eml"
         harvested.write_bytes(eml(OWNER, "bob@example.org").replace(b"\r\nSubject", b"\r\nX-Harvested: 1\r\nSubject"))
-        write_manifest(self.tmp / "mail" / OWNER, [{"id": MSGID, "downloaded": True,
-                                                     "path": f"example.org/2026-07/{harvested.name}"}])
+        write_manifest(self.tmp / "mail" / OWNER, [{"id": MSGID, "downloaded": True, "stem": harvested.stem}])
         src = self.source()
         for flags in ((), ("--apply",)):
             code, out, _ = self.run_cli("ingest", str(src), *flags)
             self.assertEqual(code, 0, out)
-            self.assertIn(f"exists  {OWNER}/archive/example.org/2026-07/{harvested.name}", out)
+            self.assertIn(f"exists  {OWNER}/messages/2026/07/{harvested.name}", out)
         self.assertFalse((self.tmp / "mail" / self.RELPATH).exists())
         self.assertTrue(src.exists())  # not byte-identical, so the source is kept
 
@@ -337,7 +465,7 @@ class Resolve(MailCase):
         src.write_bytes(eml(OWNER, "bob@example.org"))
         self.ingest(src, move=True)
         hit = self.resolve(MSGID)
-        self.assertEqual(hit.name, f"{STEM}.eml")
+        self.assertEqual(hit, self.root / OUTBOUND_RELPATH)
         self.assertIsNone(self.resolve("no-such-id@nowhere.example"))
         code, out, _ = self.run_cli("resolve", f"<{MSGID}>")
         self.assertEqual((code, out.strip()), (0, str(hit)))
@@ -350,7 +478,7 @@ class ResolveByHeader(MailCase):
     """The harvest names files another way: resolve finds a message by the Message-ID inside it."""
 
     def harvested(self, stem, msgid_header, *, account=OWNER, extra=b"", body=b"body"):
-        folder = self.tmp / "mail" / account / "archive" / "example.org" / "2026-08"
+        folder = self.tmp / "mail" / account / "messages" / "2026" / "08"
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / f"{stem}.eml"
         path.write_bytes(b"From: alice@example.org\r\nTo: owner@example.com\r\n" + extra
@@ -387,25 +515,19 @@ class ResolveByHeader(MailCase):
             reads.append(path.name)
             return real_read(path)
 
-        with mock.patch.object(store, "read_head", read), \
-                mock.patch.object(Path, "rglob", autospec=True, side_effect=Path.rglob) as rglob:
+        with mock.patch.object(store, "read_head", read), counting_glob() as glob:
             found = self.resolve_many(["many-0001@mail.example.org", "<many-0002@mail.example.org>",
                                         "missing-0004@mail.example.org"])
         self.assertEqual(found, {"many-0001@mail.example.org": first, "<many-0002@mail.example.org>": second,
                                  "missing-0004@mail.example.org": None})
-        self.assertEqual(rglob.call_count, 1)
+        self.assertEqual(store_walks(glob), 1)
         self.assertEqual(sorted(reads), sorted(set(reads)))  # each file's header read at most once
 
-    def test_the_computed_name_wins_then_the_first_in_path_order(self):
+    def test_the_first_in_path_order_wins(self):
         msgid = b" <" + MSGID.encode() + b">"
         later = self.harvested("ffff000000000001", msgid, account="z@example.com")
         earlier = self.harvested("ffff000000000002", msgid, account="a@example.com")
         self.assertEqual(self.resolve(MSGID), earlier)
-        src = self.tmp / "msg.eml"
-        src.write_bytes(eml(OWNER, "bob@example.org"))
-        filed = Path(self.ingest(src, move=True)["path"])
-        self.assertEqual(filed.stem, STEM)
-        self.assertEqual(self.resolve(MSGID), filed)
         self.assertTrue(later.exists())
 
 
@@ -431,56 +553,57 @@ class ResolveFromManifest(MailCase):
             self.reads.append(path.name)
             return real_read(path)
 
-        for patcher in (mock.patch.object(store, "read_head", read),
-                        mock.patch.object(Path, "rglob", autospec=True, side_effect=Path.rglob)):
-            self.rglob = patcher.start()
+        for patcher in (mock.patch.object(store, "read_head", read), counting_glob()):
+            self.glob = patcher.start()
             self.addCleanup(patcher.stop)
 
-    def row(self, key, path, **extra):
-        return {"id": key, "msgid": "18f2", "thread_id": "1", "downloaded": True,
-                "path": f"example.org/2026-08/{path}", **extra}
+    def row(self, key, stem, **extra):
+        return {"id": key, "msgid": "18f2", "thread_id": "1", "downloaded": True, "stem": stem, **extra}
+
+    def walks(self):
+        return store_walks(self.glob)
 
     def test_a_manifest_row_answers_without_a_walk(self):
         target = self.harvested("1111000000000001", b" <man-0001@mail.example.org>")
         for i in range(2, 5):
             self.harvested(f"111100000000000{i}", f" <other-000{i}@mail.example.org>".encode())
-        write_manifest(self.tmp / "mail" / OWNER, [self.row("man-0001@mail.example.org", target.name)],
+        write_manifest(self.tmp / "mail" / OWNER, [self.row("man-0001@mail.example.org", target.stem)],
                        tail='{"id": "torn-0001@mail.exa')  # a torn last line is skipped
         self.assertEqual(self.resolve("<MAN-0001@mail.example.org>"), target)
         self.assertEqual(self.reads, [target.name])  # the one file, to confirm the row
-        self.assertEqual(self.rglob.call_count, 0)
+        self.assertEqual(self.walks(), 0)
 
     def test_a_second_copys_key_and_two_stores_take_the_first_path(self):
         first = self.harvested("2222000000000001", b" <dup-0001@mail.example.org>", account="a@example.com")
         later = self.harvested("2222000000000002", b" <dup-0001@mail.example.org>", account="z@example.com")
-        write_manifest(self.tmp / "mail" / "z@example.com", [self.row("dup-0001@mail.example.org", later.name)])
+        write_manifest(self.tmp / "mail" / "z@example.com", [self.row("dup-0001@mail.example.org", later.stem)])
         write_manifest(self.tmp / "mail" / "a@example.com",
-                       [self.row("dup-0001@mail.example.org|gmail:19a0", first.name)])
+                       [self.row("dup-0001@mail.example.org|gmail:19a0", first.stem)])
         self.assertEqual(self.resolve("dup-0001@mail.example.org"), first)
-        self.assertEqual(self.rglob.call_count, 0)
+        self.assertEqual(self.walks(), 0)
 
     def test_a_row_that_cannot_be_trusted_falls_back_to_the_walk(self):
         real = self.harvested("3333000000000001", b" <fall-0001@mail.example.org>")
         wrong = self.harvested("3333000000000002", b" <someone-else@mail.example.org>")
         write_manifest(self.tmp / "mail" / OWNER, [
-            self.row("fall-0001@mail.example.org", "gone.eml"),  # stale: no such file
-            self.row("fall-0001@mail.example.org", wrong.name),  # the file holds another id
-            self.row("fall-0001@mail.example.org", real.name, excluded="duplicate of x"),
+            self.row("fall-0001@mail.example.org", "0000000000000000"),  # stale: no such file
+            self.row("fall-0001@mail.example.org", wrong.stem),  # the file holds another id
+            self.row("fall-0001@mail.example.org", real.stem, excluded="duplicate of x"),
         ])
         self.assertEqual(self.resolve("fall-0001@mail.example.org"), real)
-        self.assertEqual(self.rglob.call_count, 1)
+        self.assertEqual(self.walks(), 1)
 
-    def test_several_ids_mix_manifest_computed_name_and_walk(self):
+    def test_several_ids_mix_manifest_and_walk(self):
         from_row = self.harvested("4444000000000001", b" <mix-0001@mail.example.org>")
         walked = self.harvested("4444000000000002", b" <mix-0002@mail.example.org>")
         src = self.tmp / "msg.eml"
         src.write_bytes(eml(OWNER, "bob@example.org"))
         filed = Path(self.ingest(src, move=True)["path"])
-        write_manifest(self.tmp / "mail" / OWNER, [self.row("mix-0001@mail.example.org", from_row.name)])
+        write_manifest(self.tmp / "mail" / OWNER, [self.row("mix-0001@mail.example.org", from_row.stem)])
         found = self.resolve_many(["mix-0001@mail.example.org", MSGID, "mix-0002@mail.example.org"])
         self.assertEqual(found, {"mix-0001@mail.example.org": from_row, MSGID: filed,
                                  "mix-0002@mail.example.org": walked})
-        self.assertEqual(self.rglob.call_count, 1)
+        self.assertEqual(self.walks(), 1)
 
 
 @unittest.skipUnless(hasattr(os, "chflags"), "mail pin needs macOS chflags")
@@ -490,9 +613,9 @@ class PinHarvested(MailCase):
     def test_pin_locks_harvested_files_from_one_walk(self):
         one = self.harvested("dddd000000000001", b" <pin-0001@mail.example.org>")
         two = self.harvested("dddd000000000002", b" <pin-0002@mail.example.org>")
-        with mock.patch.object(Path, "rglob", autospec=True, side_effect=Path.rglob) as rglob:
+        with counting_glob() as glob:
             code, out, _ = self.run_cli("pin", "pin-0001@mail.example.org", "pin-0002@mail.example.org", "--apply")
-        self.assertEqual((code, rglob.call_count), (0, 1))
+        self.assertEqual((code, store_walks(glob)), (0, 1))
         self.assertIn("2 locked", out)
         self.assertTrue(store.is_locked(one) and store.is_locked(two))
         self.assertEqual(self.run_cli("pin", "--unpin", "pin-0001@mail.example.org", "--apply")[0], 0)

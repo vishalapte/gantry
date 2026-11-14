@@ -1,4 +1,4 @@
-"""Tests for shared/skills/enine-forwardemail. Run: python3 -m unittest test_forwardemail
+"""Tests for shared/skills/qux-forwardemail. Run: python3 -m unittest test_forwardemail
 
 Lives at the repo root for the reason test_git_boundary.py gives: a top-level file is never
 installed.
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from test_configure_domain_email import load
 
-fe = load("enine-forwardemail", "forwardemail.py")
+fe = load("qux-forwardemail", "forwardemail.py")
 fc = sys.modules["forwardemail_client"]
 pc = sys.modules["porkbun_client"]
 D = "example.com"
@@ -166,7 +166,7 @@ class Domains(Run):
         code, out = self.run_script(api, "create", "domain", D, "--set", "catchall=false", "--apply")
         self.assertEqual(code, 0, out)
         self.assertEqual(api.writes, [("create-domain", {"domain": D, "catchall": False})])
-        self.assertIn("/enine-porkbun-forwardemail example.com", out)
+        self.assertIn("/qux-porkbun-forwardemail example.com", out)
         self.assertIn("not read back: catchall", out)
 
     def test_create_of_a_held_domain_with_the_same_values_is_ok(self):
