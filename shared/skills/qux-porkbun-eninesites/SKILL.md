@@ -2,7 +2,7 @@
 name: qux-porkbun-eninesites
 description: >
   Point a Porkbun domain's website at eninesites: set ALIAS records for example.com and
-  www.example.com to eninesites.com (or to another host with --to), replacing whatever web
+  www.example.com to sites.eninesites.com (or to another host with --to), replacing whatever web
   record each name holds and deleting Porkbun's parking and forwarding placeholders, in one deterministic
   run that re-reads the zone and runs Porkbun's preflight. Always dry-runs first, shows the
   planned changes, and asks the owner before --apply writes. Use for "point <domain> at
@@ -20,7 +20,10 @@ One script does the work. Run it; do not edit the records by hand in Porkbun's d
 
 The default is a dry run: it reads the zone, prints the plan and writes nothing. Only
 `--apply` changes a record. `--to` names the host to point at; it defaults to
-`eninesites.com` and must be a host name, because an ALIAS cannot point at an address.
+`sites.eninesites.com` and must be a host name, because an ALIAS cannot point at an address.
+
+The target must hold only A and AAAA records. Porkbun answers an ALIAS with every record type
+its target holds, so a target with MX or TXT records publishes them on the domain.
 
 ## Before the first run
 

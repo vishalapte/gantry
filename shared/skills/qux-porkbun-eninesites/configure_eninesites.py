@@ -1,5 +1,5 @@
 #!/usr/bin/env python3.14
-"""Point a Porkbun domain and its www at a host with ALIAS records (eninesites.com by default).
+"""Point a Porkbun domain and its www at a host with ALIAS records (sites.eninesites.com by default).
 
     configure_eninesites.py example.com                       # dry run: plan, preflight; writes nothing
     configure_eninesites.py example.com --apply               # apply, re-read, preflight
@@ -19,7 +19,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "qux-porkbun"))
 import porkbun_client as pc  # noqa: E402
 
-DEFAULT_TARGET = "eninesites.com"
+# A host with only address records: Porkbun answers an apex ALIAS with every record type its
+# target holds, so aliasing eninesites.com itself would publish its MX and SPF on each domain.
+DEFAULT_TARGET = "sites.eninesites.com"
 NAMES = ("", "www")
 WEB_TYPES = {"ALIAS", "CNAME", "A", "AAAA"}
 HOSTNAME = re.compile(r"(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}")

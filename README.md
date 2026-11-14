@@ -263,7 +263,7 @@ to Fastmail. It prints the steps left at Fastmail.
 ### eninesites
 
 `/qux-porkbun-eninesites` (`configure_eninesites.py <domain>`) points the domain and `www`
-at `eninesites.com` with `ALIAS` records, or at the host `--to` names.
+at `sites.eninesites.com` with `ALIAS` records, or at the host `--to` names.
 
 **Credentials:** Porkbun only.
 

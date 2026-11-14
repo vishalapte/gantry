@@ -32,8 +32,8 @@ class Eninesites(Run):
         apis = FakeApis(porkbun_new_domain())
         code, out = self.run_script(apis, "--apply")
         self.assertEqual(code, 0, out)
-        self.assertEqual(web(apis, ""), [("ALIAS", "eninesites.com")])
-        self.assertEqual(web(apis, "www"), [("ALIAS", "eninesites.com")])
+        self.assertEqual(web(apis, ""), [("ALIAS", "sites.eninesites.com")])
+        self.assertEqual(web(apis, "www"), [("ALIAS", "sites.eninesites.com")])
         self.assertNotIn("pixie.porkbun.com", [r["content"] for r in apis.records.values()])
 
     def test_porkbuns_forwarding_goes_and_other_mail_and_ns_records_stay(self):
@@ -62,8 +62,8 @@ class Eninesites(Run):
         code, out = self.run_script(apis, "--apply")
         self.assertEqual(code, 0, out)
         self.assertIn("was A 1.2.3.4", out)
-        self.assertEqual(web(apis, ""), [("ALIAS", "eninesites.com")])
-        self.assertEqual(web(apis, "www"), [("ALIAS", "eninesites.com")])
+        self.assertEqual(web(apis, ""), [("ALIAS", "sites.eninesites.com")])
+        self.assertEqual(web(apis, "www"), [("ALIAS", "sites.eninesites.com")])
 
     def test_a_second_apply_writes_nothing(self):
         apis = FakeApis(porkbun_new_domain())
@@ -79,7 +79,7 @@ class Eninesites(Run):
         self.assertEqual(code, 1)
         self.assertIn("CONFLICT ALIAS www.example.com", out)
         self.assertEqual(web(apis, "www"), [])
-        self.assertEqual(web(apis, ""), [("ALIAS", "eninesites.com")])
+        self.assertEqual(web(apis, ""), [("ALIAS", "sites.eninesites.com")])
 
     def test_an_address_as_target_is_refused(self):
         apis = FakeApis(porkbun_new_domain())

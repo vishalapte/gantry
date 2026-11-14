@@ -5,6 +5,13 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+## 0.23.1 - 2026-11-14
+
+### Fixed
+- **`/qux-porkbun-eninesites` points domains at `sites.eninesites.com` by default**, a host
+  with only an address record. Porkbun answers an apex `ALIAS` with every record type its target
+  holds, so pointing at `eninesites.com` published its MX and SPF on every customer domain.
+
 ## 0.23.0 - 2026-11-14
 
 ### Changed
