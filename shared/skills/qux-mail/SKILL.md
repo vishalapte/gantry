@@ -57,7 +57,7 @@ them. A path guessed wrong reads or writes someone else's mail, so a missing one
 4. Do not mark any option "(Recommended)".
 
 **Why:** AskUserQuestion holds four options, so the verbs the owner uses least go under Other.
-`/qux-mail-dmarc` names `dmarc` itself.
+`/qux-mail-dmarc` names `dmarc` itself, and `/qux-mail-draft` names `draft`.
 
 ## Read: search, resolve
 

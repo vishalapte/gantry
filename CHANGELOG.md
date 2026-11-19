@@ -5,6 +5,17 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+## 0.24.0 - 2026-11-19
+
+### Added
+- **`/qux-mail-draft` writes a message, subject and body included.** Given the From, the To
+  and what the message is for, it writes the body from facts the owner gave or a stored
+  message holds. Task mail (a claim, a cancellation, a refund, a setup) gets the subject
+  `<reference>: <VERB> ...` and the ask first in the body. A recipient with a person record
+  under `~/.delphi/data/people/` gets the tone and form of address that record states; nothing
+  is inferred from a name. It drafts and never sends; sending stays `/qux-mail send N`. Plain
+  `/qux-mail draft` still takes the subject and body as given.
+
 ## 0.23.1 - 2026-11-14
 
 ### Fixed

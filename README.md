@@ -14,7 +14,7 @@ What every harness reads lives under `shared/`; what one harness reads lives und
 | [Forward Email](#forward-email) | Create, update, delete and read Forward Email domains and aliases | `shared/skills/qux-forwardemail/` |
 | [Domain setups](#domain-setups) | One run sets a domain's DNS for Forward Email, Fastmail or a website host | `qux-porkbun-forwardemail/`, `-fastmail/`, `-eninesites/` |
 | [AWS SES](#aws-ses) | Configure an SES identity and print the records it needs | `shared/skills/qux-aws-ses/` |
-| [Mail](#mail) | Search, resolve, file and pin stored mail; draft and send through SES; rank DMARC reports | `shared/skills/qux-mail/`, `shared/skills/qux-mail-dmarc/` |
+| [Mail](#mail) | Search, resolve, file and pin stored mail; draft and send through SES; rank DMARC reports | `shared/skills/qux-mail/`, `shared/skills/qux-mail-dmarc/`, `shared/skills/qux-mail-draft/` |
 | [Hosts and desktops](#hosts-and-desktops) | Create Linux accounts over SSH; size an Omarchy desktop's display | `linux-create-user/`, `omarchy-display-sizing/` |
 | [Commands](#commands) | `/lint` and `/review` | `claude/commands/` |
 
@@ -323,7 +323,7 @@ through SES. It is standard-library Python only.
 | `resolve <message-id>` | prints the stored `.eml` for a Message-ID | nothing |
 | `ingest <file.eml>...` | moves a `.eml` into the store byte for byte (`--copy` keeps the source); `exists` when it is already stored under any name | with `--apply` |
 | `pin <message-id>...` | locks each stored `.eml` with the macOS immutable flag; `--check` reports unlocked ones, `--unpin` unlocks | with `--apply` |
-| `draft` | builds draft N, the exact bytes SES will send, and shows it; with no arguments, lists drafts and sent mail | a draft only |
+| `draft` | builds draft N, the exact bytes SES will send, and shows it; with no arguments, lists drafts and sent mail; `/qux-mail-draft` writes one, subject and body included | a draft only |
 | `send N` | shows draft N as it will go; `send N --apply` sends it through `aws sesv2 send-email` | with `--apply` |
 | `dmarc` | reads every DMARC report in the store and ranks threats, holes and statistics; `/qux-mail-dmarc` runs it | nothing |
 
