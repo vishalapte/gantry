@@ -22,7 +22,7 @@ import gzip
 import io
 import re
 import zipfile
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta, timezone
 from email import policy
 from email.parser import BytesParser, HeaderParser
@@ -360,17 +360,34 @@ def _neg_day(day: str) -> int:
     return -date.fromisoformat(day).toordinal() if day else 0
 
 
+def _consensus(voters: list[dict], field: str) -> tuple[str, int]:
+    """The value most voters published for field, and how many did; a tie goes to the newest report."""
+    counts = Counter(r[field] for r in voters)
+    top = max(counts.values())
+    return max((r for r in voters if counts[r[field]] == top), key=lambda r: r["end"])[field], top
+
+
 def holes(reports: list[dict], today: date, quiet_days: int) -> list[dict]:
     """Weaknesses in what each domain publishes and in how its own senders authenticate.
 
     Only a hole with recent evidence is reported: a report describes the day it covers, and a
     hole fixed since then would otherwise stay listed for as long as the store keeps the report.
     A domain whose newest report is quiet shows as "no recent reports" and nothing else.
+
+    The published policy is what most reporters say, each voting once with its newest report
+    inside the quiet window: one reporter can misread or misreport a record, and the newest
+    report alone would let it raise or hide a hole.
     """
     latest: dict[str, dict] = {}
+    by_reporter: dict[tuple, dict] = {}  # (domain, reporter) -> that reporter's newest report
     for report in reports:
-        if report["domain"] and (report["domain"] not in latest or report["end"] >= latest[report["domain"]]["end"]):
-            latest[report["domain"]] = report
+        domain, key = report["domain"], (report["domain"], report["org"])
+        if not domain:
+            continue
+        if domain not in latest or report["end"] >= latest[domain]["end"]:
+            latest[domain] = report
+        if key not in by_reporter or report["end"] >= by_reporter[key]["end"]:
+            by_reporter[key] = report
     found = []
 
     def add(domain, severity, kind, detail):
@@ -383,16 +400,19 @@ def holes(reports: list[dict], today: date, quiet_days: int) -> list[dict]:
                 f"the last report covers {report['end']}, {quiet} days ago: the rua address may have changed "
                 "or reports are not reaching this store")
             continue
-        on = f"as published on {report['end']}"
-        if report["p"] in ("none", ""):
+        voters = [r for (d, _), r in by_reporter.items() if d == domain
+                  and not (r["end"] and (today - date.fromisoformat(r["end"])).days > quiet_days)]
+        (p, p_k), (pct, pct_k), (sp, sp_k) = (_consensus(voters, f) for f in ("p", "pct", "sp"))
+        on = f"as published on {report['end']}, per {{}} of {len(voters)} reporters".format
+        if p in ("none", ""):
             add(domain, "high", "p=none",
-                f"policy is none {on}: receivers deliver mail that fails DMARC, so the domain can be spoofed")
-        if report["pct"] and report["pct"] != "100" and report["p"] not in ("none", ""):
-            add(domain, "medium", f"pct={report['pct']}",
-                f"p={report['p']} applies to {report['pct']}% of failing mail {on}; the rest is delivered")
-        if report["sp"] == "none" and report["p"] not in ("none", ""):
+                f"policy is none {on(p_k)}: receivers deliver mail that fails DMARC, so the domain can be spoofed")
+        if pct and pct != "100" and p not in ("none", ""):
+            add(domain, "medium", f"pct={pct}",
+                f"p={p} applies to {pct}% of failing mail {on(pct_k)}; the rest is delivered")
+        if sp == "none" and p not in ("none", ""):
             add(domain, "medium", "sp=none",
-                f"subdomain policy is none {on}: any subdomain can be spoofed though p={report['p']}")
+                f"subdomain policy is none {on(sp_k)}: any subdomain can be spoofed though p={p}")
 
     # A legitimate sender: a (domain, sender) pair with passing mail. Its pass is fragile when it
     # rests on one mechanism; DKIM survives forwarding and SPF does not. A sender whose newest

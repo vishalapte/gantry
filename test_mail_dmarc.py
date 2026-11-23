@@ -237,6 +237,22 @@ class Ranking(DmarcCase):
                                  ("medium", "spf.example", "DKIM not aligned"),
                                  ("low", "quiet.example", "no recent reports")])
 
+    def test_the_published_policy_is_what_most_reporters_say_not_the_newest_report(self):
+        ok = [("192.0.2.1", 1, "none", "pass", "pass", D)]
+        for org in ("a.example", "b.example"):
+            self.add(org, org=org, sp="reject", day=TODAY - timedelta(days=1), records=ok)
+        self.add("odd", org="odd.example", sp="none", records=ok)  # the newest report, and the only sp=none
+        self.assertEqual(self.scan()["holes"], [])
+
+    def test_a_policy_hole_most_reporters_show_is_reported_with_their_count(self):
+        ok = [("192.0.2.1", 1, "none", "pass", "pass", D)]
+        for org in ("a.example", "b.example"):
+            self.add(org, org=org, sp="none", day=TODAY - timedelta(days=1), records=ok)
+        self.add("odd", org="odd.example", sp="reject", records=ok)
+        holes = self.scan()["holes"]
+        self.assertEqual([h["kind"] for h in holes], ["sp=none"])
+        self.assertIn(f"as published on {TODAY.isoformat()}, per 2 of 3 reporters", holes[0]["detail"])
+
     def test_a_policy_hole_on_a_report_past_the_quiet_window_is_not_reported(self):
         self.add("stale", p="none", day=TODAY - timedelta(days=90),
                  records=[("192.0.2.1", 1, "none", "pass", "pass", D)])

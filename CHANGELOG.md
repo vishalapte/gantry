@@ -5,6 +5,16 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+## 0.24.1 - 2026-11-22
+
+### Fixed
+- **`/qux-mail-dmarc` judges a domain's published policy by what most reporters say.** Each
+  reporter counts once, with its newest report inside the 60-day quiet window; a tie goes to the
+  newest report, and each hole names its support ("per 2 of 3 reporters"). It had judged the
+  policy on the single newest report, so one reporter that writes `sp=none` for a record with no
+  `sp` tag raised a false subdomain hole whenever its report came last. A fixed policy now stays
+  listed until most reporters have reported since the fix.
+
 ## 0.24.0 - 2026-11-19
 
 ### Added
