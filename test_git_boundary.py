@@ -94,16 +94,17 @@ class GitBoundary(unittest.TestCase):
             with self.subTest(argv=argv):
                 out = subprocess.run(argv, cwd=self.repo, env=self.env, capture_output=True, text=True)
                 self.assertNotEqual(out.returncode, 0)
-                self.assertIn("org_boundary", out.stderr)
+                self.assertIn("pre-push: refusing to push", out.stderr)
         self.assertEqual(self.git("branch", "-r", cwd=self.tmp / "remote.git").stdout, "")
 
-    def test_allowed_push_runs_repo_pre_push_with_stdin(self):
+    def test_a_push_to_a_listed_owner_is_refused_too(self):
         self.repo_hook("pre-push", "repo-pre-push-ran")
         out = subprocess.run([str(HOOKS / "pre-push"), "origin", "https://github.com/me/app.git"],
                              cwd=self.repo, env=self.env, input=self.REFS,
                              capture_output=True, text=True)
-        self.assertEqual(out.returncode, 0, out.stderr)
-        self.assertEqual((self.tmp / "repo-pre-push-ran").read_text(), self.REFS)
+        self.assertNotEqual(out.returncode, 0)
+        self.assertIn("refusing to push to origin", out.stderr)
+        self.assertFalse((self.tmp / "repo-pre-push-ran").exists())
 
     # --- deleting a remote ref is refused, however it was spelled
 
@@ -119,7 +120,7 @@ class GitBoundary(unittest.TestCase):
                     input=f"refs/heads/x abc refs/heads/x def\n(delete) {zeros} refs/heads/gone abc\n",
                     capture_output=True, text=True)
                 self.assertNotEqual(out.returncode, 0)
-                self.assertIn("refusing to delete refs/heads/gone", out.stderr)
+                self.assertIn("refusing to push", out.stderr)
                 self.assertFalse((self.tmp / "repo-pre-push-ran").exists())
 
     def test_refused_push_skips_repo_pre_push(self):

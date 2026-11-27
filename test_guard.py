@@ -80,6 +80,40 @@ class Guard(unittest.TestCase):
                          "asked `*manage.py migrate*`")
         self.assertEqual(pi("python manage.py flush"), "deny")
 
+    def test_a_commit_runs_and_an_amend_asks(self):
+        for command in ('git commit -m "fix: x"', "git -C ../wt commit -q -m y", "git commit -a"):
+            with self.subTest(command=command):
+                self.assertEqual(pi(command), "allow")
+        for command in ("git commit --amend", "git commit --amend --no-edit", "git commit -a --am",
+                        "git commit --ame -m y", "git commit --amen", "git -C ../wt commit --amend"):
+            with self.subTest(command=command):
+                self.assertEqual(pi(command), "ask")
+        self.assertEqual(pi("git commit -n -m y"), "deny", "-n skips the hooks")
+
+    def test_every_push_is_denied(self):
+        for command in ("git push", "git push origin feat/x", "git push -u origin HEAD",
+                        "git -C ../wt push", "git -c push.default=current push",
+                        "env git push", "env -i git push origin x", "command git push",
+                        'bash -c "git push origin x"', "ls && git push", "gh repo sync"):
+            with self.subTest(command=command):
+                self.assertEqual(pi(command), "deny")
+                self.assertEqual(codex(command), "deny")
+
+    def test_a_gh_api_call_that_can_write_is_denied(self):
+        for command in ("gh api repos/o/r/git/refs -f ref=refs/heads/x -f sha=abc",
+                        "gh api -X PATCH repos/o/r/git/refs/heads/main -F force=true",
+                        "gh api repos/o/r/contents/a.txt -XPUT --input body.json",
+                        "gh api --method=DELETE repos/o/r/git/refs/heads/x",
+                        "gh api repos/o/r/merges --raw-field base=main --field head=x",
+                        "gh api graphql -f query=@mutation.graphql", "env gh api -X POST x"):
+            with self.subTest(command=command):
+                self.assertEqual(pi(command), "deny")
+                self.assertEqual(codex(command), "deny")
+        for command in ('gh api -H "Accept: application/vnd.github.raw" repos/o/r/contents/a.md',
+                        "gh api repos/o/my-foo/branches/main", "gh api 'repos/o/r/pulls?state=all'"):
+            with self.subTest(command=command):
+                self.assertEqual(pi(command), "ask", "a read is not denied")
+
     def test_no_rule_asks(self):
         self.assertEqual(pi("bash x.sh"), "ask")
         self.assertEqual(pi(""), "ask")

@@ -113,16 +113,27 @@ harness gets that env: Claude Code through `settings.json`, Codex through
 Every hook name other than `pre-push` and `commit-msg` is a symlink to `_dispatch`, which runs
 the repo's own hook, so pre-commit and the rest keep working.
 
-### Pushes
+### Commits and pushes
 
-- A push goes only to a GitHub owner listed in `~/.claude/orgs.json`. That file is private
-  and never in this repo; copy `orgs.example.json` there and list your owners. With no file,
-  or a malformed one, every push is refused.
-- A push that deletes a remote ref is refused, however it is spelled (`:branch`, `--delete`,
-  `-d`): git marks every deletion the same way.
+- `git commit` runs without asking. `--amend`, and each shorter spelling of it git accepts
+  (`--am`, `--ame`, `--amen`), asks. `-n` and `--no-verify` skip the hooks, so they are denied.
+- An agent never pushes. `shared/permissions.json` denies `git push` in every spelling it can
+  read (`git -C <dir> push`, `git -c <key>=<value> push`, `env git push`, `bash -c "git push"`),
+  and `gh repo sync`. The pre-push hook refuses every push the rules miss, such as a git alias
+  or a script. A side effect: a command whose text holds ` git push`, such as a grep for it or
+  a commit message naming it, is denied too.
+- Until the block is lifted, the hook's older checks are not reached: a push went only to a
+  GitHub owner listed in the private `~/.claude/orgs.json` (template: `orgs.example.json`),
+  and a push that deleted a remote ref was refused. Lifting the block is deleting the two
+  lines at the top of `shared/git-hooks/pre-push`.
 - Skipping or redirecting hooks (`--no-verify`, `core.hooksPath`, `GIT_CONFIG_*`) is denied.
 - `gh` has no hook point: public gists, public repo creation and visibility changes are
   denied in `shared/permissions.json`; other `gh` writes ask.
+- `gh api` can write a branch without `git push`, so every `gh api` call that can write is
+  denied: one with a method (`-X`, `--method`), a field (`-f`, `-F`, `--field`,
+  `--raw-field`) or a body (`--input`), and every `gh api graphql`, which always POSTs. A
+  read still asks: `gh api repos/<owner>/<repo>/branches/<branch>`, with query parameters in
+  the path (`'pulls?state=all'`), not in `-f`.
 
 ### Commits
 

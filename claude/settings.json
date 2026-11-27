@@ -32,7 +32,7 @@
   "autoMode": {
     "environment": [
       "### Org-wide",
-      "**Organizations**: the GitHub owners listed in the private file ~/.claude/orgs.json, which is not shown here. Repos under a listed owner are internal. A git pre-push hook (core.hooksPath=~/.gantry/git-hooks, set only for the agent's commands) refuses any push whose owner is not listed, and every push when the file is missing or malformed. Skipping or redirecting git hooks (--no-verify, core.hooksPath, GIT_CONFIG_*) is denied",
+      "**Organizations**: the GitHub owners listed in the private file ~/.claude/orgs.json, which is not shown here. Repos under a listed owner are internal. The agent never pushes: every git push is denied, and a git pre-push hook (core.hooksPath=~/.gantry/git-hooks, set only for the agent's commands) refuses every push the rules miss. Skipping or redirecting git hooks (--no-verify, core.hooksPath, GIT_CONFIG_*) is denied",
       "**Cloud provider(s)**: None configured",
       "**Internal sharing / snippet hosting**: None configured — treat public paste/gist services as outside the trust boundary",
       "**Secrets management**: None configured",

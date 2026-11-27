@@ -5,6 +5,22 @@ All notable changes to this configuration are recorded here, in the style of
 
 ## [Unreleased]
 
+## 0.25.0 - 2026-11-27
+
+### Changed
+- **A commit runs without asking; an amend asks.** `git commit` and `git -C <dir> commit` are
+  allowed. `--amend`, and each shorter spelling git accepts (`--am`, `--ame`, `--amen`), asks,
+  because it rewrites a commit the owner may have read. `-n` and `--no-verify` stay denied.
+- **An agent never pushes.** A push is denied in every spelling the rules can read
+  (`git -C`, `git -c`, `env`, `bash -c`), with `gh repo sync`, replacing the 14 narrower push
+  rules. The pre-push hook, which runs only for an agent's commands, refuses every push the
+  rules miss, such as a git alias or a script. Its org-list and remote-delete checks stay in
+  place, not reached; lifting the block is deleting two lines at the top of the hook. A
+  command whose text names a push (a grep for one, say) is denied too.
+- **A `gh api` call that can write is denied.** One with a method (`-X`, `--method`), a field
+  (`-f`, `-F`, `--field`, `--raw-field`) or a body (`--input`), and every `gh api graphql`:
+  each can write a branch with no push. A read still asks.
+
 ## 0.24.1 - 2026-11-22
 
 ### Fixed

@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
-# Refuse a push outside the org list, and any push that deletes a remote ref, then run the
-# repo's own pre-push. git passes the remote name and URL as $1 and $2, however the push was
-# started (alias, script, bash -c).
+# Refuse every push. These hooks run only for an agent's commands (shared/env.json), and the
+# owner blocks every agent push. git runs this hook however the push was started (alias,
+# script, bash -c), so no spelling gets past it.
+echo "pre-push: refusing to push to $1; pushes are the owner's, and an agent may not push" >&2
+exit 1
+
+# Not reached while every push is refused. These are the checks a push met before; lifting the
+# block is deleting the two lines above. Refuse a push outside the org list, and any push that
+# deletes a remote ref, then run the repo's own pre-push. git passes the remote name and URL
+# as $1 and $2.
 dir="$(dirname "$0")"
 python3.14 "$dir/_boundary.py" "$2" || exit 1
 

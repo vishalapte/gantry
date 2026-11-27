@@ -11,14 +11,17 @@ The rules live in `~/.gantry/permissions.json` (shell commands) and in `permissi
 them; do not restate them here. What those files cannot hold is the intent:
 
 - **Mutating asks. Irreversible is blocked.** Irreversibility is judged by audience, not
-  by the verb. Pushing a feature branch or opening a PR inside my orgs is mutating: it
-  asks. Leaving that boundary (a public repo, a gist, email), rewriting or deleting shared
-  history (force-push, deleting a remote branch, pushing to `main`/`master`), or
-  destroying data with no copy (`manage.py flush`) is irreversible: it is blocked. A
-  command no rule matches is judged by the same line.
-- **Commits and pushes are mine.** Approving a prompt is a per-action act, not a standing grant.
+  by the verb. Opening a PR inside my orgs is mutating: it asks. Leaving that boundary (a
+  public repo, a gist, email), rewriting or deleting shared history, or destroying data with
+  no copy (`manage.py flush`) is irreversible: it is blocked. A command no rule matches is
+  judged by the same line.
+- **A commit runs; an amend asks.** `git commit` needs no approval. `--amend`, in any
+  spelling, rewrites a commit I may have read, so it asks.
+- **Pushes are mine. An agent never pushes.** Every push is blocked, however it is spelled,
+  and gantry's pre-push hook refuses whatever the rules miss. Hand me the push command.
+- **Approving a prompt is a per-action act,** not a standing grant.
 - **Only what `deny` names is blocked.** Everything else prompts at most, so do
-  not tell me something is blocked when it is not: an agent that believes `git commit`
+  not tell me something is blocked when it is not: an agent that believes `git merge`
   cannot run will report a runbook as un-runnable and route around a prompt I would have
   approved.
 - **The `manage.py` exclusions are a denylist.** A custom management command that writes
@@ -28,8 +31,8 @@ Each harness enforces the same lists its own way:
 
 - **Claude Code:** its own permission rules, rendered from both files.
 - **Codex:** the workspace-write sandbox keeps `.git` read-only and the network off, so every
-  git change, push and network call asks for approval; a PreToolUse hook blocks what `deny`
-  names. Approve each action once. Its "don't ask again" writes a standing allow rule to
+  git change (a commit included) and every network call asks for approval; a PreToolUse hook
+  blocks what `deny` names. Approve each action once. Its "don't ask again" writes a standing allow rule to
   `~/.codex/rules/default.rules`.
 - **Pi:** the gantry-guard extension blocks what `deny` names, runs what `allow` names, and asks
   for every other shell command. In print mode (`pi -p`, no screen to ask on) it blocks what it
